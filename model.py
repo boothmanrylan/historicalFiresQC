@@ -41,7 +41,7 @@ def build_unet_model(input_shape, classes):
 
     for up, skip in zip(up_stack, skips):
         x = up(x)
-        concat = tf.keras.layer.Concatenate()
+        concat = tf.keras.layers.Concatenate()
         x = concat([x, skip])
 
     last = tf.keras.layers.Conv2DTranspose(
