@@ -30,7 +30,7 @@ def get_dataset(patterns, batch_size=64, filters=None, cache=True,
     except TypeError:
         patterns = [patterns]
 
-    files = tf.data.Dataset.list_file(patterns[0])
+    files = tf.data.Dataset.list_files(patterns[0])
 
     for p in patterns[1:]:
         files = files.concatenate(tf.data.Dataset.list_files(p))
