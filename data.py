@@ -27,7 +27,7 @@ def parse(example, shape):
 def filter_blank(image, mask):
     return not(tf.reduce_max(mask) == 0 and tf.reduce_min(mask) == 0)
 
-def filter_no_burnt(image, maks):
+def filter_no_burnt(image, mask):
     return tf.reduce_max(mask) == 4
 
 def filter_nan(image, mask):
