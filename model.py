@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
-import tensorflow_examples as tfe
+from tensorflow_examples.models.pix2pix import pix2pix
 
 def build_unet_model(input_shape, classes):
     """
@@ -25,10 +25,10 @@ def build_unet_model(input_shape, classes):
     down_stack = tf.keras.Model(inputs=base_model.input, outputs=layers)
 
     up_stack = [
-        tfe.models.pix2pix.pix2pix.upsample(512, 3),
-        tfe.models.pix2pix.pix2pix.upsample(256, 3),
-        tfe.models.pix2pix.pix2pix.upsample(128, 3),
-        tfe.models.pix2pix.pix2pix.upsample(64,  3)
+        pix2pix.upsample(512, 3),
+        pix2pix.upsample(256, 3),
+        pix2pix.upsample(128, 3),
+        pix2pix.upsample(64,  3)
     ]
 
     inputs = tf.keras.layers.Input(shape=input_shape)
