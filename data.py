@@ -17,7 +17,7 @@ def parse(example, shape):
     mask = tf.reshape(parsed.pop('class'), shape)
 
     image = tf.stack([
-        tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), SHAPE)
+        tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
         for k in parsed.keys()
     ], axis=-1)
     image = tf.cast(image, tf.float32) / 255.0
