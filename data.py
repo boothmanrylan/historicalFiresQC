@@ -5,16 +5,19 @@ AUTOTUNE = tf.data.experimental.AUTOTUNE
 @tf.function
 def parse(example, shape):
     feature_description = {
-        'B4': tf.io.FixedLenFeature((), tf.string),
-        'B5': tf.io.FixedLenFeature((), tf.string),
-        'B6': tf.io.FixedLenFeature((), tf.string),
-        'B7': tf.io.FixedLenFeature((), tf.string),
-        'class': tf.io.FixedLenFeature((shape[0] * shape[1]), tf.int64)
+        'B4':    tf.io.FixedLenFeature((), tf.string),
+        'B5':    tf.io.FixedLenFeature((), tf.string),
+        'B6':    tf.io.FixedLenFeature((), tf.string),
+        'B7':    tf.io.FixedLenFeature((), tf.string),
+        'class': tf.io.FixedLenFeature((), tf.string)
     }
 
     parsed = tf.io.parse_single_example(example, feature_description)
 
-    mask = tf.reshape(parsed.pop('class'), shape)
+    mask = tf.reshape(
+        tf.io.decode_raw(parsed.pop('class'), tf.uint8),
+        shape
+    )
 
     image = tf.stack([
         tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
