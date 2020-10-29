@@ -35,9 +35,7 @@ def filter_nan(image, mask):
 
 def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
                 shuffle=True, repeat=True, prefetch=True):
-    try:
-        len(patterns)
-    except TypeError:
+    if not isinstance(patterns, list):
         patterns = [patterns]
 
     files = tf.data.Dataset.list_files(patterns[0])
@@ -52,9 +50,7 @@ def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
     dataset = dataset.filter(filter_blank).filter(filter_nan)
 
     if filters is not None:
-        try:
-            len(filters)
-        except TypeError:
+        if not isinstance(filters, list):
             filters = [filters]
         for f in filters:
             dataset = dataset.filter(f)
