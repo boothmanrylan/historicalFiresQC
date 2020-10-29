@@ -1,4 +1,4 @@
-import tensorflow as tF
+import tensorflow as tf
 
 feature_description = {
     'B4': tf.io.FixedLenFeature((), tf.string),
