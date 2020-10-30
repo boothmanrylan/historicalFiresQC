@@ -3,7 +3,8 @@ import tensorflow as tf
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 @tf.function
-def parse(example, shape, return_class=True, return_noisy_class=False):
+def parse(example, shape, return_class=True, return_noisy_class=False,
+          combine_burnt_classes=False):
     feature_description = {
         'B4':         tf.io.FixedLenFeature((), tf.string),
         'B5':         tf.io.FixedLenFeature((), tf.string),
@@ -24,6 +25,10 @@ def parse(example, shape, return_class=True, return_noisy_class=False):
         tf.io.decode_raw(parsed.pop('class'), tf.uint8),
         shape
     )
+
+    if combine_burnt_classes:
+        annotation = tf.where(annotation == 5, 4, annotation)
+        noisy_annotation = tf.where(annotation == 5, 4, anotation)
 
     image = tf.cast(
         tf.stack([
