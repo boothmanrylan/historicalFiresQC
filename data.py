@@ -34,7 +34,7 @@ def parse(example, shape, annotation=True, noisy_annotation=False,
         drop = tf.cast(5, annotation.dtype)
         replace = tf.cast(4, annotation.dtype)
         annotation = tf.where(annotation == drop, replace, annotation)
-        noisy_annotation = tf.where(annotation == drop, replace, anotation)
+        noisy_annotation = tf.where(annotation == drop, replace, annotation)
 
     image = tf.cast(
         tf.stack([
