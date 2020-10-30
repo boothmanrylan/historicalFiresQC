@@ -54,7 +54,7 @@ def parse(example, shape, return_annotation=True, return_noisy_annotation=False,
 
 def filter_blank(image, annotation, noisy_annotation=None):
     return not (tf.reduce_min(annotation) == 0 and
-                tf.reduce_max(annotation == 0))
+                tf.reduce_max(annotation) == 0)
 
 def filter_no_x(x, image, annotation, noisy_annotation=None):
     compare = tf.cast(tf.fill(tf.shape(annotation), x), annotation.dtype)
