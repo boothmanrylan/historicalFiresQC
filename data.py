@@ -5,35 +5,49 @@ AUTOTUNE = tf.data.experimental.AUTOTUNE
 @tf.function
 def parse(example, shape):
     feature_description = {
-        'B4':    tf.io.FixedLenFeature((), tf.string),
-        'B5':    tf.io.FixedLenFeature((), tf.string),
-        'B6':    tf.io.FixedLenFeature((), tf.string),
-        'B7':    tf.io.FixedLenFeature((), tf.string),
-        'class': tf.io.FixedLenFeature((), tf.string)
+        'B4':         tf.io.FixedLenFeature((), tf.string),
+        'B5':         tf.io.FixedLenFeature((), tf.string),
+        'B6':         tf.io.FixedLenFeature((), tf.string),
+        'B7':         tf.io.FixedLenFeature((), tf.string),
+        'class':      tf.io.FixedLenFeature((), tf.string),
+        'noisyClass': tf.io.FixedLenFeature((), tf.string)
     }
 
     parsed = tf.io.parse_single_example(example, feature_description)
 
-    mask = tf.reshape(
+    annotation = tf.reshape(
         tf.io.decode_raw(parsed.pop('class'), tf.uint8),
         shape
     )
 
-    image = tf.stack([
-        tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
-        for k in parsed.keys()
-    ], axis=-1)
-    image = tf.cast(image, tf.float32) / 255.0
+    noisy_annotation = tf.reshape(
+        tf.io.decode_raw(parsed.pop('class'), tf.uint8),
+        shape
+    )
 
-    return image, mask
+    image = tf.cast(
+        tf.stack([
+            tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
+            for k in parsed.keys()
+        ], axis=-1),
+        tf.float32
+    )
 
-def filter_blank(image, mask):
-    return not(tf.reduce_max(mask) == 0 and tf.reduce_min(mask) == 0)
+    return image / 255.0, annotation, noisy_annotation
 
-def filter_no_burnt(image, mask):
-    return tf.reduce_max(mask) == 4
+def filter_blank(image, annotation, noisy_annotation):
+    return (tf.reduce_min(annotation) != 0 or
+            tf.reduce_max(annotation != 0))
 
-def filter_nan(image, mask):
+def filter_no_x(x, image, annotation, noisy_annotation):
+    compare = tf.cast(tf.fill(tf.shape(annotation), x), annotation.dtype)
+    return tf.reduce_any(tf.equal(annotation, compare))
+
+def filter_no_burnt(image, annotation, noisy_annotation):
+    return (filter_no_x(4, image, annotation, noisy_annotation) or
+            filter_no_x(5, image, annotation, noisy_annotation))
+
+def filter_nan(image, annotation, noisy_annotation):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
 def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
