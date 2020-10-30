@@ -31,8 +31,10 @@ def parse(example, shape, annotation=True, noisy_annotation=False,
     )
 
     if combine_burnt:
-        annotation = tf.where(annotation == 5, 4, annotation)
-        noisy_annotation = tf.where(annotation == 5, 4, anotation)
+        drop = tf.cast(5, annotation.dtype)
+        replace = tf.cast(4, annotation.dtype)
+        annotation = tf.where(annotation == drop, replace, annotation)
+        noisy_annotation = tf.where(annotation == drop, replace, anotation)
 
     image = tf.cast(
         tf.stack([
