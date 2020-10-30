@@ -44,7 +44,7 @@ def show_predictions(dataset, model, num):
         ax[1].set_title('Ground "Truth"')
 
         ax[2].imshow(prediction, vmin=0, vmax=len(colours), cmap=cmap,
-                     interpolation='nearest', origin='lower', norm=norm))
+                     interpolation='nearest', origin='lower', norm=norm)
         ax[2].set_title('Model Prediction')
 
         ax[3].imshow(prediction == true_annotation)
