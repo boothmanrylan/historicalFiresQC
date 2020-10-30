@@ -3,7 +3,7 @@ import tensorflow as tf
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 @tf.function
-def parse(example, shape):
+def parse(example, shape, return_class=True, return_noisy_class=False):
     feature_description = {
         'B4':         tf.io.FixedLenFeature((), tf.string),
         'B5':         tf.io.FixedLenFeature((), tf.string),
@@ -33,7 +33,13 @@ def parse(example, shape):
         tf.float32
     )
 
-    return image / 255.0, annotation, noisy_annotation
+    output = [image / 255.0]
+    if return_class:
+        output.append(annotation)
+    if return_noisy_class:
+        output.append(noisy_annotation)
+
+    return output
 
 def filter_blank(image, annotation, noisy_annotation):
     return (tf.reduce_min(annotation) != 0 or
