@@ -3,7 +3,7 @@ import tensorflow as tf
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 @tf.function
-def parse(example, shape, annotation=True, noisy_annotation=False,
+def parse(example, shape, return_annotation=True, return_noisy_annotation=False,
           combine_burnt=False):
 
     if not (annotation or noisy_annotation):
@@ -45,11 +45,11 @@ def parse(example, shape, annotation=True, noisy_annotation=False,
     )
 
     image /= 255.0
-    if annotation and not noisy_annotation:
+    if return_annotation and not return_noisy_annotation:
         return image, annotation
-    if noisy_annotation and not annotation:
+    if return_noisy_annotation and not return_annotation:
         return image, noisy_annotation
-    if annotation and noisy_annotation:
+    if return_annotation and return_noisy_annotation:
         return image, annotation, noisy_annotation
 
 def filter_blank(image, annotation, noisy_annotation=None):
