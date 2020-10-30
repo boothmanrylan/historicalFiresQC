@@ -44,13 +44,13 @@ def parse(example, shape, annotation=True, noisy_annotation=False,
         tf.float32
     )
 
-    output = [image / 255.0]
-    if annotation:
-        output.append(annotation)
-    if noisy_annotation:
-        output.append(noisy_annotation)
-
-    return output
+    image /= 255.0
+    if annotation and not noisy_annotation:
+        return image, annotation
+    if noisy_annotation and not annotation:
+        return image, noisy_annotation
+    if annotation and noisy_annotation:
+        return image, annotation, noisy_annotation
 
 def filter_blank(image, annotation, noisy_annotation=None):
     return not (tf.reduce_min(annotation) == 0 and
