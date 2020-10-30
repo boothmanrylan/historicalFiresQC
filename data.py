@@ -26,7 +26,7 @@ def parse(example, shape, annotation=True, noisy_annotation=False,
     )
 
     noisy_annotation = tf.reshape(
-        tf.io.decode_raw(parsed.pop('class'), tf.uint8),
+        tf.io.decode_raw(parsed.pop('noisyClass'), tf.uint8),
         shape
     )
 
