@@ -3,8 +3,12 @@ import tensorflow as tf
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 @tf.function
-def parse(example, shape, return_class=True, return_noisy_class=False,
-          combine_burnt_classes=False):
+def parse(example, shape, annotation=True, noisy_annotation=False,
+          combine_burnt=False):
+
+    if not (annotation or noisy_annotation):
+        annotation = True
+
     feature_description = {
         'B4':         tf.io.FixedLenFeature((), tf.string),
         'B5':         tf.io.FixedLenFeature((), tf.string),
@@ -26,7 +30,7 @@ def parse(example, shape, return_class=True, return_noisy_class=False,
         shape
     )
 
-    if combine_burnt_classes:
+    if combine_burnt:
         annotation = tf.where(annotation == 5, 4, annotation)
         noisy_annotation = tf.where(annotation == 5, 4, anotation)
 
@@ -39,30 +43,32 @@ def parse(example, shape, return_class=True, return_noisy_class=False,
     )
 
     output = [image / 255.0]
-    if return_class:
+    if annotation:
         output.append(annotation)
-    if return_noisy_class:
+    if noisy_annotation:
         output.append(noisy_annotation)
 
     return output
 
-def filter_blank(image, annotation, noisy_annotation):
+def filter_blank(image, annotation, noisy_annotation=None):
     return (tf.reduce_min(annotation) != 0 or
             tf.reduce_max(annotation != 0))
 
-def filter_no_x(x, image, annotation, noisy_annotation):
+def filter_no_x(x, image, annotation, noisy_annotation=None):
     compare = tf.cast(tf.fill(tf.shape(annotation), x), annotation.dtype)
     return tf.reduce_any(tf.equal(annotation, compare))
 
-def filter_no_burnt(image, annotation, noisy_annotation):
+def filter_no_burnt(image, annotation, noisy_annotation=None):
     return (filter_no_x(4, image, annotation, noisy_annotation) or
             filter_no_x(5, image, annotation, noisy_annotation))
 
-def filter_nan(image, annotation, noisy_annotation):
+def filter_nan(image, annotation, noisy_annotation=None):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
 def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
-                shuffle=True, repeat=True, prefetch=True):
+                shuffle=True, repeat=True, prefetch=True,
+                annotation=True, noisy_annotation=False,
+                combine_burnt=False):
     if not isinstance(patterns, list):
         patterns = [patterns]
 
@@ -72,8 +78,10 @@ def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
         files = files.concatenate(tf.data.Dataset.list_files(p))
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
-    dataset = dataset.map(lambda x: parse(x, shape),
-                          num_parallel_calls=AUTOTUNE)
+    dataset = dataset.map(
+        lambda x: parse(x, shape, annotation, noisy_annotation, combine_burnt),
+        num_parallel_calls=AUTOTUNE
+    )
 
     dataset = dataset.filter(filter_blank).filter(filter_nan)
 
