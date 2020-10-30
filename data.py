@@ -6,8 +6,8 @@ AUTOTUNE = tf.data.experimental.AUTOTUNE
 def parse(example, shape, return_annotation=True, return_noisy_annotation=False,
           combine_burnt=False):
 
-    if not (annotation or noisy_annotation):
-        annotation = True
+    if not (return_annotation or return_noisy_annotation):
+        return_annotation = True
 
     feature_description = {
         'B4':         tf.io.FixedLenFeature((), tf.string),
