@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
-colors = [
+colours = [
     (0, 0,    0), # white for clouds
     (1, 1,    1), # black for no data
     (0, 0,    1), # blue for water
