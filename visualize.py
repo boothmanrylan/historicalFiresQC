@@ -12,7 +12,9 @@ colours = [
     (1, 0.65, 0)  # orange for old burns
 ]
 
-cm = LinearSegmentedColormap.from_list('annotation', colours, N=len(colours))
+cmap = ListedColormap(colours)
+bounds = [0, 1, 2, 3, 4, 5, 6]
+norm = BoundaryNorm(bounds, cmap.N)
 
 def show_predictions(dataset, model, num):
     for images, true_annotations in dataset.take(num):
@@ -37,10 +39,12 @@ def show_predictions(dataset, model, num):
         ax[0].imshow(false_colour_image, vmin=vmin, vmax=vmax)
         ax[0].set_title('Input Patch')
 
-        ax[1].imshow(true_annotation, vmin=0, vmax=len(colours), cmap=cm)
+        ax[1].imshow(true_annotation, vmin=0, vmax=len(colours), cmap=cmap,
+                     interpolation='nearest', origin='lower', norm=norm)
         ax[1].set_title('Ground "Truth"')
 
-        ax[2].imshow(prediction, vmin=0, vmax=len(colours), cmap=cm)
+        ax[2].imshow(prediction, vmin=0, vmax=len(colours), cmap=cmap,
+                     interpolation='nearest', origin='lower', norm=norm))
         ax[2].set_title('Model Prediction')
 
         ax[3].imshow(prediction == true_annotation)
