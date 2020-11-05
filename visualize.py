@@ -83,10 +83,10 @@ def show_dataset(dataset, num, combined_burnt=False):
         fci = false_colour_image(image)
         vmin, vmax = calculate_vmin_vmax(fci)
 
-        f, ax = plt.subplots(1, 4, figsize=(15, 30))
+        f, ax = plt.subplots(1, 2, figsize=(15, 30))
         ax[0].imshow(fci, vmin=vmin, vmax=vmax)
         ax[0].set_title('Input Image')
 
         ax[1].imshow(annotation, vmin=0, vmax=num_classes, cmap=cmap,
                      interpolation='nearest', norm=norm)
-        ax[1].set_titel('Annotation')
+        ax[1].set_title('Annotation')
