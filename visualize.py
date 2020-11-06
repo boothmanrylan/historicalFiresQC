@@ -38,13 +38,6 @@ def calculate_vmin_vmax(image, alpha=0.9):
     return vmin, vmax
 
 def visualize(dataset, model=None, num=20):
-    num_classes = len(colours)
-    cmap = split_burnt_cmap
-    norm = split_burnt_norm
-    if combined_burnt:
-        num_classes -= 1
-        cmap = combined_burnt_cmap
-        norm = combined_burnt_norm
     for data in dataset.take(num):
         num_figs = len(data)
         if model is not None:
@@ -66,11 +59,11 @@ def visualize(dataset, model=None, num=20):
             else:
                 cmap = combined_burnt_cmap
                 norm = combined_burnt_norm
-            ax[i + 1].imshow(annotation, vmin=0, vmax=vmaX, cmap=cmap,
+            ax[i + 1].imshow(annotation, vmin=0, vmax=vmax, cmap=cmap,
                              interpolation='nearest', norm=norm)
-            ax[i + 1].set_title('Annotation')
+            ax[i + 1].set_title(f'Annotation {i + 1}')
 
-        if model:
+        if model is not None:
             prediction = tf.argmax(
                 model(data[0], training=False)[0], -1
             ).numpy()
