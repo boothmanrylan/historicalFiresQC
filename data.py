@@ -1,13 +1,36 @@
 import tensorflow as tf
+import itertools
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 @tf.function
-def parse(example, shape, return_annotation=True, return_noisy_annotation=False,
-          combine_burnt=False):
+def parse(example, shape, clean_annotation=True, noisy_annotation=False,
+          combined_burnt=True, split_burnt=False):
+    """
+    Parse TFRecords containing annotated MSS data.
 
-    if not (return_annotation or return_noisy_annotation):
-        return_annotation = True
+    Assumes TFRecords contain both a "clean" and a "noisy" annotation. Either
+    or both of the annotations can be returned by setting clean_annotation
+    and/or noisy_annotation to True. Defaults to just return the clean
+    annotations.
+
+    Assumes the numerically largest and second largest classes represent new
+    and old burns. The burn classes can be returned as separate classes and/or
+    as one class by setting combined_burnt and/or split_burnt to True. Defaults
+    to returning them as one class.
+
+    Regardless of how many or which combinations of clean/noisy combined/split
+    are returned the output will always be in this order:
+    image, combined clean, split clean, combined clean, split noisy
+    """
+
+    # ensure at least one of clean_annotation or noisy_annotation is True
+    if not (clean_annotation or noisy_annotation):
+        clean_annotation = True
+
+    # ensure at least one of combined_burnt or split_burnt is True
+    if not (combined_burnt or split_burnt):
+        combined_burnt = True
 
     feature_description = {
         'B4':         tf.io.FixedLenFeature((), tf.string),
@@ -20,21 +43,27 @@ def parse(example, shape, return_annotation=True, return_noisy_annotation=False,
 
     parsed = tf.io.parse_single_example(example, feature_description)
 
-    annotation = tf.reshape(
+    split_burnt_clean_annotation = tf.reshape(
         tf.io.decode_raw(parsed.pop('class'), tf.uint8),
         shape
     )
 
-    noisy_annotation = tf.reshape(
+    split_burnt_noisy_annotation = tf.reshape(
         tf.io.decode_raw(parsed.pop('noisyClass'), tf.uint8),
         shape
     )
 
-    if combine_burnt:
-        drop = tf.cast(5, annotation.dtype)
-        replace = tf.cast(4, annotation.dtype)
-        annotation = tf.where(annotation == drop, replace, annotation)
-        noisy_annotation = tf.where(annotation == drop, replace, annotation)
+    drop =  tf.reduce_max(split_burnt_clean_annotation)
+    replace =  drop - 1
+    combined_burnt_clean_annotation = tf.where(
+        split_burnt_clean_annotation == drop,
+        replace,
+        split_burnt_clean_annotation)
+    combined_burnt_noisy_annotation = tf.where(
+        split_burnt_noisy_annotation == drop,
+        replace,
+        split_burnt_noisy_annotation
+    )
 
     image = tf.cast(
         tf.stack([
@@ -44,13 +73,19 @@ def parse(example, shape, return_annotation=True, return_noisy_annotation=False,
         tf.float32
     )
 
-    image /= 255.0
-    if return_annotation and not return_noisy_annotation:
-        return image, annotation
-    if return_noisy_annotation and not return_annotation:
-        return image, noisy_annotation
-    if return_annotation and return_noisy_annotation:
-        return image, annotation, noisy_annotation
+    outputs = [image / 255.0,
+               combined_burnt_clean_annotation,
+               split_burnt_clean_annotation,
+               combined_burnt_noisy_annotation,
+               split_burnt_noisy_annotation]
+
+    selectors = [True,
+                 combined_burnt and clean_annotation,
+                 split_burnt and clean_annotation,
+                 combined_burnt and noisy_annotation,
+                 split_burnt and noisy_annotation]
+
+    return list(itertools.compress(outputs, selectors))
 
 def filter_blank(image, annotation, noisy_annotation=None):
     return not (tf.reduce_min(annotation) == 0 and
@@ -69,8 +104,8 @@ def filter_nan(image, annotation, noisy_annotation=None):
 
 def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
                 shuffle=True, repeat=True, prefetch=True,
-                annotation=True, noisy_annotation=False,
-                combine_burnt=False):
+                clean_annotation=True, noisy_annotation=False,
+                combined_burnt=True, split_burnt=False):
     if not isinstance(patterns, list):
         patterns = [patterns]
 
@@ -81,7 +116,8 @@ def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
-        lambda x: parse(x, shape, annotation, noisy_annotation, combine_burnt),
+        lambda x: parse(x, shape, clean_annotation, noisy_annotation,
+                        combined_burnt, split_burnt),
         num_parallel_calls=AUTOTUNE
     )
 
