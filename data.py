@@ -87,19 +87,19 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
 
     return list(itertools.compress(outputs, selectors))
 
-def filter_blank(image, annotation, noisy_annotation=None):
+def filter_blank(image, annotation, *annotations):
     return not (tf.reduce_min(annotation) == 0 and
                 tf.reduce_max(annotation) == 0)
 
-def filter_no_x(x, image, annotation, noisy_annotation=None):
+def filter_no_x(x, image, annotation, *annotations):
     compare = tf.cast(tf.fill(tf.shape(annotation), x), annotation.dtype)
     return tf.reduce_any(tf.equal(annotation, compare))
 
-def filter_no_burnt(image, annotation, noisy_annotation=None):
+def filter_no_burnt(image, annotation, *annotations):
     return (filter_no_x(4, image, annotation, noisy_annotation) or
             filter_no_x(5, image, annotation, noisy_annotation))
 
-def filter_nan(image, annotation, noisy_annotation=None):
+def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
 def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
