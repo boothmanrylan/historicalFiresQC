@@ -13,10 +13,8 @@ colours = [
 ]
 bounds = [0, 1, 2, 3, 4, 5, 6]
 
-split_burnt_cmap = ListedColormap(colours)
-combined_burnt_cmap = ListedColormap(colours[:-1])
-split_burnt_norm = BoundaryNorm(bounds, split_burnt_cmap.N)
-combined_burnt_norm = BoundaryNorm(bounds[:-1], combined_burnt_cmap.N)
+cmap = ListedColormap(colours)
+norm = BoundaryNorm(bounds, split_burnt_cmap.N)
 
 def false_colour_image(image):
     """
@@ -52,14 +50,7 @@ def visualize(dataset, model=None, num=20):
 
         for i, annotations in enumerate(data[1:]):
             annotation = tf.squeeze(annotations[0]).numpy()
-            vmax = np.max(annotations)
-            if vmax == len(colours):
-                cmap = split_burnt_cmap
-                norm = split_burnt_norm
-            else:
-                cmap = combined_burnt_cmap
-                norm = combined_burnt_norm
-            ax[i + 1].imshow(annotation, vmin=0, vmax=vmax, cmap=cmap,
+            ax[i + 1].imshow(annotation, vmin=0, vmax=len(colours), cmap=cmap,
                              interpolation='nearest', norm=norm)
             ax[i + 1].set_title(f'Annotation {i + 1}')
 
@@ -67,15 +58,6 @@ def visualize(dataset, model=None, num=20):
             prediction = tf.argmax(
                 model(data[0], training=False)[0], -1
             ).numpy()
-
-            vmax = np.max(prediction)
-            if vmax == len(colours):
-                cmap = split_burnt_cmap
-                norm = split_burnt_norm
-            else:
-                cmap = combined_burnt_cmap
-                norm = combined_burnt_norm
-
-            ax[num_figs - 1].imshow(prediction, vmin=0, vmax=vmax, cmap=cmap,
+            ax[num_figs - 1].imshow(prediction, vmin=0, vmax=len(colours), cmap=cmap,
                                     interpolation='nearest', norm=norm)
             ax[num_figs - 1].set_title('Model Prediction')
