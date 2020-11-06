@@ -96,8 +96,8 @@ def filter_no_x(x, image, annotation, *annotations):
     return tf.reduce_any(tf.equal(annotation, compare))
 
 def filter_no_burnt(image, annotation, *annotations):
-    return (filter_no_x(4, image, annotation, noisy_annotation) or
-            filter_no_x(5, image, annotation, noisy_annotation))
+    return (filter_no_x(4, image, annotation) or
+            filter_no_x(5, image, annotation))
 
 def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
