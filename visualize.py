@@ -14,7 +14,7 @@ colours = [
 bounds = [0, 1, 2, 3, 4, 5, 6]
 
 cmap = ListedColormap(colours)
-norm = BoundaryNorm(bounds, split_burnt_cmap.N)
+norm = BoundaryNorm(bounds, cmap.N)
 
 def false_colour_image(image):
     """
