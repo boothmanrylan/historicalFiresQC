@@ -37,7 +37,7 @@ def calculate_vmin_vmax(image, alpha=0.9):
     vmax = mean + (alpha / 2 * std)
     return vmin, vmax
 
-def show_predictions(dataset, model, num, combined_burnt=False):
+def visualize(dataset, model=None, num=20):
     num_classes = len(colours)
     cmap = split_burnt_cmap
     norm = split_burnt_norm
@@ -45,48 +45,44 @@ def show_predictions(dataset, model, num, combined_burnt=False):
         num_classes -= 1
         cmap = combined_burnt_cmap
         norm = combined_burnt_norm
-    for images, true_annotations in dataset.take(num):
-        image = tf.squeeze(images[0]).numpy()
-        true_annotation = tf.squeeze(true_annotations[0]).numpy()
-        prediction = tf.argmax(model(images, training=False)[0], -1).numpy()
+    for data in dataset.take(num):
+        num_figs = len(data)
+        if model is not None:
+            num_figs += 1
+        f, ax = plt.subplots(1, num_figs, figsize=(15, 30))
 
+        image = tf.squeeze(data[0][0]).numpy()
         fci = false_colour_image(image)
         vmin, vmax = calculate_vmin_vmax(fci)
-
-        f, ax = plt.subplots(1, 4, figsize=(15, 30))
         ax[0].imshow(fci, vmin=vmin, vmax=vmax)
         ax[0].set_title('Input Patch')
 
-        ax[1].imshow(true_annotation, vmin=0, vmax=num_classes, cmap=cmap,
-                     interpolation='nearest', norm=norm)
-        ax[1].set_title('Ground "Truth"')
+        for i, annotations in enumerate(data[1:]):
+            annotation = tf.squeeze(annotations[0]).numpy()
+            vmax = np.max(annotation)
+            if vmax == len(colours):
+                cmap = split_burnt_cmap
+                norm = split_burnt_norm
+            else:
+                cmap = combined_burnt_cmap
+                norm = combined_burnt_norm
+            ax[i + 1].imshow(annotation, vmin=0, vmax=vmaX, cmap=cmap,
+                             interpolation='nearest', norm=norm)
+            ax[i + 1].set_title('Annotation')
 
-        ax[2].imshow(prediction, vmin=0, vmax=num_classes, cmap=cmap,
-                     interpolation='nearest', norm=norm)
-        ax[2].set_title('Model Prediction')
+        if model:
+            prediction = tf.argmax(
+                model(data[0], training=False)[0], -1
+            ).numpy()
 
-        ax[3].imshow(prediction == true_annotation)
-        ax[3].set_title('Misclassifications')
+            vmax = np.max(prediction)
+            if vmax == len(colours):
+                cmap = split_burnt_cmap
+                norm = split_burnt_norm
+            else:
+                cmap = combined_burnt_cmap
+                norm = combined_burnt_norm
 
-def show_dataset(dataset, num, combined_burnt=False):
-    num_classes = len(colours)
-    cmap = split_burnt_cmap
-    norm = split_burnt_norm
-    if combined_burnt:
-        num_classes -= 1
-        cmap = combined_burnt_cmap
-        norm = combined_burnt_norm
-    for images, annotations in dataset.take(num):
-        image = tf.squeeze(images[0]).numpy()
-        annotation = tf.squeeze(annotations[0]).numpy()
-
-        fci = false_colour_image(image)
-        vmin, vmax = calculate_vmin_vmax(fci)
-
-        f, ax = plt.subplots(1, 2, figsize=(15, 30))
-        ax[0].imshow(fci, vmin=vmin, vmax=vmax)
-        ax[0].set_title('Input Image')
-
-        ax[1].imshow(annotation, vmin=0, vmax=num_classes, cmap=cmap,
-                     interpolation='nearest', norm=norm)
-        ax[1].set_title('Annotation')
+            ax[num_figs - 1].imshow(prediction, vmin=0, vmax=vmax, cmap=cmap,
+                                    interpolation='nearest', norm=norm)
+            ax[num_figs - 1].set_title('Model Prediction')
