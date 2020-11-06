@@ -52,7 +52,7 @@ def visualize(dataset, model=None, num=20):
 
         for i, annotations in enumerate(data[1:]):
             annotation = tf.squeeze(annotations[0]).numpy()
-            vmax = np.max(annotation)
+            vmax = np.max(annotations)
             if vmax == len(colours):
                 cmap = split_burnt_cmap
                 norm = split_burnt_norm
