@@ -43,8 +43,8 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
         'noisyClass': tf.io.FixedLenFeature((), tf.string),
         'referencePoints': tf.io.FixedLenFeature((), tf.string),
         'mergedReferencePoints': tf.io.FixedLenFeature((), tf.string),
-        'burnAge': tf.io.FixedLenFeature((), tf.string),
-        'mergedBurnAge': tf.io.FixedLenFeature((), tf.string)
+        'burnAge': tf.io.FixedLenFeature((shape), tf.float),
+        'mergedBurnAge': tf.io.FixedLenFeature((shape), tf.float)
     }
 
     parsed = tf.io.parse_single_example(example, feature_description)
@@ -70,12 +70,14 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
     )
 
     burn_age = tf.reshape(
-        tf.io.decode_raw(parsed.pop('burnAge'), tf.float64),
+        parsed.pop('burnAge'),
+        # tf.io.decode_raw(parsed.pop('burnAge'), tf.float64),
         shape
     )
 
     merged_burn_age = tf.reshape(
-        tf.io.decode_raw(parsed.pop('mergedBurnAge'), tf.float64),
+        parsed.pop('mergedBurnAge'),
+        # tf.io.decode_raw(parsed.pop('mergedBurnAge'), tf.float64),
         shape
     )
 
