@@ -5,7 +5,9 @@ AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 @tf.function
 def parse(example, shape, clean_annotation=True, noisy_annotation=False,
-          combined_burnt=True, split_burnt=False):
+          combined_burnt=True, split_burnt=False, get_ref_points=False,
+          get_merged_ref_points=False, get_burn_age=False,
+          get_merged_burn_age=False):
     """
     Parse TFRecords containing annotated MSS data.
 
@@ -38,7 +40,11 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
         'B6':         tf.io.FixedLenFeature((), tf.string),
         'B7':         tf.io.FixedLenFeature((), tf.string),
         'class':      tf.io.FixedLenFeature((), tf.string),
-        'noisyClass': tf.io.FixedLenFeature((), tf.string)
+        'noisyClass': tf.io.FixedLenFeature((), tf.string),
+        'referencePoints': tf.io.FixedLenFeature((), tf.string),
+        'mergedReferencePoints': tf.io.FixedLenFeature((), tf.string),
+        'burnAge': tf.io.FixedLenFeature((), tf.string),
+        'mergedBurnAge': tf.io.FixedLenFeature((), tf.string)
     }
 
     parsed = tf.io.parse_single_example(example, feature_description)
@@ -50,6 +56,26 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
 
     split_burnt_noisy_annotation = tf.reshape(
         tf.io.decode_raw(parsed.pop('noisyClass'), tf.uint8),
+        shape
+    )
+
+    ref_points = tf.reshape(
+        tf.io.decode_raw(parsed.pop('referencePoints'), tf.int32),
+        shape
+    )
+
+    merged_ref_points = tf.reshape(
+        tf.io.decode_raw(parsed.pop('mergedReferencePoints'), tf.int32),
+        shape
+    )
+
+    burn_age = tf.reshape(
+        tf.io.decode_raw(parsed.pop('burnAge'), tf.float64),
+        shape
+    )
+
+    merged_burn_age = tf.reshape(
+        tf.io.decode_raw(parsed.pop('mergedBurnAge'), tf.float64),
         shape
     )
 
@@ -77,13 +103,21 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
                combined_burnt_clean_annotation,
                split_burnt_clean_annotation,
                combined_burnt_noisy_annotation,
-               split_burnt_noisy_annotation]
+               split_burnt_noisy_annotation,
+               ref_points,
+               merged_ref_points,
+               burn_age,
+               merged_burn_age]
 
     selectors = [True,
                  combined_burnt and clean_annotation,
                  split_burnt and clean_annotation,
                  combined_burnt and noisy_annotation,
-                 split_burnt and noisy_annotation]
+                 split_burnt and noisy_annotation,
+                 get_ref_points,
+                 get_merged_ref_points,
+                 get_burn_age,
+                 get_merged_burn_age]
 
     return list(itertools.compress(outputs, selectors))
 
