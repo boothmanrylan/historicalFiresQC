@@ -73,8 +73,8 @@ def split_class_cm(model, dataset, true_classes=6, predicted_classes=5):
                 matrix[t, p] += tf.reduce_sum(tf.cast(curr, tf.int32))
     return matrix
 
-def reference_accuracy(model, dataset):
-    matrix = np.zeros((4, 4))
+def reference_accuracy(model, dataset, num_classes):
+    matrix = np.zeros((num_classes, num_classes))
     for image, reference in dataset:
         predictions = tf.argmax(model(image, training=False), -1)
         predictions = tf.reshape(predictions, [-1])
@@ -85,16 +85,16 @@ def reference_accuracy(model, dataset):
         predictions = tf.boolean_mask(predictions, mask)
         references = tf.boolean_mask(references, mask)
 
-        matrix += tf.math.confusion_matrix(references, predictions, 4)
+        matrix += tf.math.confusion_matrix(references, predictions, num_classes)
     return matrix
 
 
 def dated_burn_accuracy(model, dataset, num_classes):
     output = {}
-    for image, reference in dataset:
-        predictions = tf.argmax(model(image, training=False), -1)
+    for images, references in dataset:
+        predictions = tf.argmax(model(images, training=False), -1)
         predictions = tf.reshape(predictions, [-1])
-        reference = tf.reshape(reference, [-1])
+        references = tf.reshape(references, [-1])
 
         mask = tf.where(references != 0)
         predictions = tf.boolean_mask(predictions, mask)
@@ -113,9 +113,9 @@ def dated_burn_accuracy(model, dataset, num_classes):
     return output
 
 def plot_burn_accuracy_by_burn_age(model, dataset, num_classes):
-    if num_classes == 4:
+    if num_classes == 5:
         class_names = ['None', 'Cloud', 'Water', 'Land', 'Burn']
-    elif num_classes == 5:
+    elif num_classes == 6:
         class_names = ['None', 'Cloud', 'Water', 'Land', 'New Burn', 'Old Burn']
     else:
         raise ValueError('bad num_classses')
