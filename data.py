@@ -27,12 +27,12 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
     """
 
     # ensure at least one of clean_annotation or noisy_annotation is True
-    if not (clean_annotation or noisy_annotation):
-        clean_annotation = True
+    # if not (clean_annotation or noisy_annotation):
+    #     clean_annotation = True
 
     # ensure at least one of combined_burnt or split_burnt is True
-    if not (combined_burnt or split_burnt):
-        combined_burnt = True
+    # if not (combined_burnt or split_burnt):
+    #     combined_burnt = True
 
     feature_description = {
         'B4':         tf.io.FixedLenFeature((), tf.string),
@@ -139,7 +139,9 @@ def filter_nan(image, annotation, *annotations):
 def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
                 shuffle=True, repeat=True, prefetch=True,
                 clean_annotation=True, noisy_annotation=False,
-                combined_burnt=True, split_burnt=False):
+                combined_burnt=True, split_burnt=False, get_ref_points=False,
+                get_merged_ref_points=False, get_burn_age=False,
+                get_merged_burn_age=False):
     if not isinstance(patterns, list):
         patterns = [patterns]
 
@@ -151,7 +153,9 @@ def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
         lambda x: parse(x, shape, clean_annotation, noisy_annotation,
-                        combined_burnt, split_burnt),
+                        combined_burnt, split_burnt, get_ref_points,
+                        get_merged_ref_points, get_burn_age,
+                        get_merged_burn_age),
         num_parallel_calls=AUTOTUNE
     )
 
