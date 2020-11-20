@@ -41,10 +41,10 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
         'B7':         tf.io.FixedLenFeature((), tf.string),
         'class':      tf.io.FixedLenFeature((), tf.string),
         'noisyClass': tf.io.FixedLenFeature((), tf.string),
-        'referencePoints': tf.io.FixedLenFeature((), tf.string),
-        'mergedReferencePoints': tf.io.FixedLenFeature((), tf.string),
-        'burnAge': tf.io.FixedLenFeature((shape), tf.float32),
-        'mergedBurnAge': tf.io.FixedLenFeature((shape), tf.float32)
+        'referencePoints': tf.io.FixedLenFeature(shape, tf.int64),
+        'mergedReferencePoints': tf.io.FixedLenFeature(shape, tf.int64),
+        'burnAge': tf.io.FixedLenFeature(shape, tf.float32),
+        'mergedBurnAge': tf.io.FixedLenFeature(shape, tf.float32)
     }
 
     parsed = tf.io.parse_single_example(example, feature_description)
@@ -60,12 +60,14 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
     )
 
     ref_points = tf.reshape(
-        tf.io.decode_raw(parsed.pop('referencePoints'), tf.int32),
+        parsed.pop('referencePoints'),
+        # tf.io.decode_raw(parsed.pop('referencePoints'), tf.int32),
         shape
     )
 
     merged_ref_points = tf.reshape(
-        tf.io.decode_raw(parsed.pop('mergedReferencePoints'), tf.int32),
+        parsed.pop('mergedReferencePoints'),
+        # tf.io.decode_raw(parsed.pop('mergedReferencePoints'), tf.int32),
         shape
     )
 
