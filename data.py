@@ -43,8 +43,8 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
         'noisyClass': tf.io.FixedLenFeature((), tf.string),
         'referencePoints': tf.io.FixedLenFeature((), tf.string),
         'mergedReferencePoints': tf.io.FixedLenFeature((), tf.string),
-        'burnAge': tf.io.FixedLenFeature((shape), tf.float),
-        'mergedBurnAge': tf.io.FixedLenFeature((shape), tf.float)
+        'burnAge': tf.io.FixedLenFeature((shape), tf.float64),
+        'mergedBurnAge': tf.io.FixedLenFeature((shape), tf.float64)
     }
 
     parsed = tf.io.parse_single_example(example, feature_description)
