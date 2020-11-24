@@ -140,7 +140,7 @@ def dated_burn_accuracy(model, dataset, num_classes):
 
     # convert output to dict of lists
     for k, v in output.items():
-        output[k] = list(v.numpy)
+        output[k] = list(v.numpy())
     return output
 
 def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
