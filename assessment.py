@@ -23,6 +23,9 @@ def normalize_confusion_matrix(cm):
     return cm / class_counts
 
 def plot_confusion_matrix(cm, xlabels, ylabels=None):
+    # transpose confusion matrix to follow remote sensing convetions
+    cm = tf.transpose(cm)
+
     if ylabels is None:
         ylabels = xlabels
     heatmap = sns.heatmap(cm, annot=True, xticklabels=xlabels,
