@@ -129,13 +129,13 @@ def dated_burn_accuracy(model, dataset, num_classes):
             # its possible that some classes were never predicted, ensure they
             # are given a count of zero
             preds = tf.tensor_scatter_nd_add(
-                tf.zeros(num_classes),
+                tf.zeros(num_classes, tf.int32),
                 tf.reshape(preds, (-1, 1)),
                 counts
             )
 
             if age not in output.keys():
-                output[age] = tf.zeros(num_classes)
+                output[age] = tf.zeros(num_classes, tf.int32)
             output[age] += preds
 
     # convert output to dict of lists
