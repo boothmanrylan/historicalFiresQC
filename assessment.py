@@ -19,6 +19,7 @@ def confusion_matrix(model, dataset, classes=5):
 def normalize_confusion_matrix(confusion_matrix):
     confusion_matrix = tf.cast(confusion_matrix, tf.float32)
     class_counts = tf.math.reduce_sum(confusion_matrix, 1, keepdims=True)
+    class_counts = tf.where(class_counts == 0, 1, class_counts)
     return confusion_matrix / class_counts
 
 def plot_confusion_matrix(confusion_matrix, xlabels, ylabels=None):
