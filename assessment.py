@@ -143,13 +143,8 @@ def dated_burn_accuracy(model, dataset, num_classes):
         output[k] = list(v.numpy)
     return output
 
-def plot_burn_accuracy_by_burn_age(model, dataset, num_classes):
-    if num_classes == 5:
-        class_names = ['None', 'Cloud', 'Water', 'Land', 'Burn']
-    elif num_classes == 6:
-        class_names = ['None', 'Cloud', 'Water', 'Land', 'New Burn', 'Old Burn']
-    else:
-        raise ValueError('bad num_classses')
+def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
+    num_classes = len(class_labels)
     results = dated_burn_accuracy(model, dataset, num_classes)
     df = pd.DataFrame.from_dict(results)
     df.index = class_names
