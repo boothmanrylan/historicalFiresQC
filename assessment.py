@@ -82,33 +82,60 @@ def reference_accuracy(model, dataset, num_classes):
         references = tf.reshape(reference, [-1])
 
         # drop all 0 points in reference as they are not labelled
-        mask = tf.where(references != 0)
-        predictions = tf.boolean_mask(predictions, mask)
-        references = tf.boolean_mask(references, mask)
+        mask = tf.reshape(tf.where(references != 0), [-1])
+        predictions = tf.gather(predictions, mask)
+        references = tf.gather(references, mask)
 
         matrix += tf.math.confusion_matrix(references, predictions, num_classes)
     return matrix
 
 
 def dated_burn_accuracy(model, dataset, num_classes):
+    """
+    Dataset is expected to return tuples of image, references points
+    All non-negative references are true burns
+    The true burn reference point values are the age of the burn in days
+    """
     output = {}
     for images, references in dataset:
         predictions = tf.argmax(model(images, training=False), -1)
+
+        # flatten predictions and reference
         predictions = tf.reshape(predictions, [-1])
         references = tf.reshape(references, [-1])
 
-        mask = tf.where(references != 0)
-        predictions = tf.boolean_mask(predictions, mask)
-        references = tf.boolean_mask(references, mask)
+        # remove all non-burn points
+        burnmask = tf.reshape(tf.where(references >= 0), [-1])
+        predictions = tf.gather(predictions, burnmask)
+        references = tf.gather(references, burnmask)
 
+        # get all of the unique burn ages
         ages, indices = tf.unique(references)
 
+        # for every unique burn age determine how many of them were predicted
+        # as each class
         for i, age in enumerate(ages.numpy()):
-            preds = tf.boolean_mask(predictions, tf.where(indices == i))
-            _, _, preds = tf.unique_with_counts(preds)
+            # get all the predictions for the current burn age
+            age_i_mask = tf.reshape(tf.where(indices == i), [-1]))
+            age_i_preds = tf.gather(predictions, age_i_mask)
+
+            # count the number of times burns of this age were labelled as each
+            # class
+            preds, _, counts = tf.unique_with_counts(age_i_preds)
+
+            # its possible that some classes were never predicted, ensure they
+            # are given a count of zero
+            preds = tf.tensor_scatter_nd_add(
+                tf.zeros(num_classes),
+                tf.reshape(preds, (-1, 1)),
+                counts
+            )
+
             if age not in output.keys():
                 output[age] = tf.zeros(num_classes)
             output[age] += preds
+
+    # convert output to dict of lists
     for k in output.keys():
         output[k] = list(output[k].numpy)
     return output
