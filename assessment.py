@@ -147,7 +147,7 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
     num_classes = len(class_labels)
     results = dated_burn_accuracy(model, dataset, num_classes)
     df = pd.DataFrame.from_dict(results)
-    df.index = class_names
+    df.index = class_labels
     df = df.divide(df.sum(axis=1), axis=1)
     longdf = df.melt(ignore_index=False).reset_index()
     longdf.columns = ['Predicted Class', 'Burn Age', 'Percent']
