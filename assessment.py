@@ -151,6 +151,7 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
     df = df.divide(df.sum(axis=1), axis=1)
     longdf = df.melt(ignore_index=False).reset_index()
     longdf.columns = ['Predicted Class', 'Burn Age', 'Percent']
-    sns.countplot(x='Burn Age', y='Percent', hue='Predicted Class',
-                          data=longdf)
+    fig, axes = plt.subplot(1, 1, figsize=(30, 10))
+    axes[0] = sns.countplot(x='Burn Age', hue='Predicted Class', data=longdf)
+    axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=90)
     plt.show()
