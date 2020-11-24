@@ -16,28 +16,28 @@ def confusion_matrix(model, dataset, classes=5):
         matrix += tf.math.confusion_matrix(labels, predictions, classes)
     return matrix
 
-def normalize_confusion_matrix(confusion_matrix):
-    confusion_matrix = tf.cast(confusion_matrix, tf.float32)
-    class_counts = tf.math.reduce_sum(confusion_matrix, 1, keepdims=True)
+def normalize_confusion_matrix(cm):
+    cm = tf.cast(cm, tf.float32)
+    class_counts = tf.math.reduce_sum(cm, 1, keepdims=True)
     class_counts = tf.where(class_counts == 0, 1, class_counts)
-    return confusion_matrix / class_counts
+    return cm / class_counts
 
-def plot_confusion_matrix(confusion_matrix, xlabels, ylabels=None):
+def plot_confusion_matrix(cm, xlabels, ylabels=None):
     if ylabels is None:
         ylabels = xlabels
-    heatmap = sns.heatmap(confusion_matrix, annot=True, xticklabels=xlabels,
+    heatmap = sns.heatmap(cm, annot=True, xticklabels=xlabels,
                           yticklabels=ylabels)
     heatmap.set_ylabel('Predicted Class')
     heatmap.set_xlabel('"True" Class')
     heatmap.set_title('Confusion Matrix')
     plt.show()
 
-def _errors(confusion_matrix, classes, axis):
+def _errors(cm, classes, axis):
     n = len(classes)
 
-    class_counts = tf.reduce_sum(confusion_matrix, axis, keepdims=True)
+    class_counts = tf.reduce_sum(cm, axis, keepdims=True)
 
-    incorrect = confusion_matrix * tf.math.abs(tf.eye(n) - 1)
+    incorrect = cm * tf.math.abs(tf.eye(n) - 1)
     incorrect = tf.reduce_sum(incorrect, axis, keepdims=True)
 
     errors = tf.squeeze(incorrect / class_counts)
@@ -45,20 +45,20 @@ def _errors(confusion_matrix, classes, axis):
 
     return dict(zip(classes, errors))
 
-def errors_of_omission(confusion_matrix, classes):
-    return _errors(confusion_matrix, classes, 0)
+def errors_of_omission(cm, classes):
+    return _errors(cm, classes, 0)
 
-def error_of_comission(confusion_matrix, classes):
-    return _errors(confusion_matrix, classes, 1)
+def error_of_comission(cm, classes):
+    return _errors(cm, classes, 1)
 
-def acc(confusion_matrix, classes):
-    correct = confusion_matrix * tf.eye(classes, classes)
-    return tf.reduce_sum(correct) / tf.reduce_sum(confusion_matrix)
+def acc(cm, classes):
+    correct = cm * tf.eye(classes, classes)
+    return tf.reduce_sum(correct) / tf.reduce_sum(cm)
 
-def avg_class_acc(confusion_matrix, classes):
-    correct = confusion_matrix * tf.eye(classes, classes)
+def avg_class_acc(cm, classes):
+    correct = cm * tf.eye(classes, classes)
     class_accs = tf.reduce_sum(correct, 1)
-    return tf.reduce_avg(avg_acc)
+    return tf.reduce_mean(class_accs)
 
 def split_class_cm(model, dataset, true_classes=6, predicted_classes=5):
     matrix = np.zeros((true_classes, predicted_classes))
@@ -116,7 +116,7 @@ def dated_burn_accuracy(model, dataset, num_classes):
         # as each class
         for i, age in enumerate(ages.numpy()):
             # get all the predictions for the current burn age
-            age_i_mask = tf.reshape(tf.where(indices == i), [-1]))
+            age_i_mask = tf.reshape(tf.where(indices == i), [-1])
             age_i_preds = tf.gather(predictions, age_i_mask)
 
             # count the number of times burns of this age were labelled as each
@@ -136,8 +136,8 @@ def dated_burn_accuracy(model, dataset, num_classes):
             output[age] += preds
 
     # convert output to dict of lists
-    for k in output.keys():
-        output[k] = list(output[k].numpy)
+    for k, v in output.items():
+        output[k] = list(v.numpy)
     return output
 
 def plot_burn_accuracy_by_burn_age(model, dataset, num_classes):
@@ -153,8 +153,6 @@ def plot_burn_accuracy_by_burn_age(model, dataset, num_classes):
     df = df.divide(df.sum(axis=1), axis=1)
     longdf = df.melt(ignore_index=False).reset_index()
     longdf.columns = ['Predicted Class', 'Burn Age', 'Percent']
-    graph = sns.countplot(x='Burn Age', y='Percent', hue='Predicted Class',
-            data=longdf)
+    sns.countplot(x='Burn Age', y='Percent', hue='Predicted Class',
+                          data=longdf)
     plt.show()
-
-
