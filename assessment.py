@@ -31,7 +31,7 @@ def plot_confusion_matrix(cm, xlabels, ylabels=None):
     heatmap = sns.heatmap(cm, annot=True, xticklabels=xlabels,
                           yticklabels=ylabels)
     heatmap.set_ylabel('Predicted Class')
-    heatmap.set_xlabel('"True" Class')
+    heatmap.set_xlabel('True Class')
     heatmap.set_title('Confusion Matrix')
     plt.show()
 
