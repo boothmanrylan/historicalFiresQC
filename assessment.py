@@ -84,6 +84,9 @@ def reference_accuracy(model, dataset, num_classes):
         predictions = tf.reshape(predictions, [-1])
         references = tf.reshape(reference, [-1])
 
+        # merge new and old burn classes
+        predictions = tf.where(predictions > 4, 4, predictions)
+
         # drop all 0 points in reference as they are not labelled
         mask = tf.reshape(tf.where(references != 0), [-1])
         predictions = tf.gather(predictions, mask)
@@ -111,6 +114,9 @@ def dated_burn_accuracy(model, dataset, num_classes):
         burnmask = tf.reshape(tf.where(references >= 0), [-1])
         predictions = tf.gather(predictions, burnmask)
         references = tf.gather(references, burnmask)
+
+        # merge new and old burn class
+        predictions = tf.where(predictions > 4, 4, predictions)
 
         # get all of the unique burn ages
         ages, indices = tf.unique(references)
