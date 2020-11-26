@@ -148,10 +148,19 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
     results = dated_burn_accuracy(model, dataset, num_classes)
     df = pd.DataFrame.from_dict(results)
     df.index = class_labels
-    df = df.divide(df.sum(axis=1), axis=1)
-    longdf = df.melt(ignore_index=False).reset_index()
-    longdf.columns = ['Predicted Class', 'Burn Age', 'Percent']
-    fig, axes = plt.subplots(1, 1, figsize=(30, 10))
-    axes[0] = sns.countplot(x='Burn Age', hue='Predicted Class', data=longdf)
-    axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=90)
-    plt.show()
+    df = df.drop(0, 1)
+    df /= df.sum()
+    df = df.melt(ignore_index=False).reset_index()
+    df.columns = ['Predicted Class', 'Burn Age (Days)', '% Burns Predicted']
+
+    sns.set_theme()
+    palette = sns.crayon_palette(
+        ['Forest Green', 'Navy Blue', 'Red']
+    )
+    hue_order = ['Land', 'Water', 'Burn']
+
+    df = df[df['Predicted Class'].isin(hue_order)]
+
+    sns.lmplot(x='Burn Age (Days)', y='% Burns Predicted',
+               hue='Predicted Class', data=df, palette=palette,
+               hue_order=hue_order, height=4, aspect=1.75)
