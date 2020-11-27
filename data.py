@@ -111,24 +111,24 @@ def parse(example, shape, get_images=True, stack_image=False,
                split_burnt_clean_annotation,
                combined_burnt_noisy_annotation,
                split_burnt_noisy_annotation,
+               CART_classification,
+               stacked_CART_classification,
                ref_points,
                merged_ref_points,
                burn_age,
-               merged_burn_age,
-               CART_classification,
-               stacked_CART_classification]
+               merged_burn_age]
 
     selectors = [get_images,
                  combined_burnt and clean_annotation,
                  split_burnt and clean_annotation,
                  combined_burnt and noisy_annotation,
                  split_burnt and noisy_annotation,
+                 get_CART_classification,
+                 get_stacked_CART_classification,
                  get_ref_points,
                  get_merged_ref_points,
                  get_burn_age,
-                 get_merged_burn_age,
-                 get_CART_classification,
-                 get_stacked_CART_classification]
+                 get_merged_burn_age]
 
     return list(itertools.compress(outputs, selectors))
 
