@@ -118,7 +118,7 @@ def dated_burn_accuracy(model, dataset, num_classes):
         burn_ages = tf.reshape(burn_ages, [-1])
 
         # remove all non-burn points
-        burnmask = tf.reshape(tf.where(references != 4), [-1])
+        burnmask = tf.reshape(tf.where(references == 4), [-1])
         burn_ages = tf.gather(burn_ages, burnmask)
         predictions = tf.gather(predictions, burnmask)
 
