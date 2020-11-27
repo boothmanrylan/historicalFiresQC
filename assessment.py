@@ -91,7 +91,7 @@ def reference_accuracy(model, dataset, num_classes):
         predictions = tf.where(predictions > 4, 4, predictions)
 
         # drop all 0 points in reference as they are not labelled
-        mask = tf.reshape(tf.where(references != 0), [-1])
+        mask = tf.reshape(tf.where(references >= 0), [-1])
         predictions = tf.gather(predictions, mask)
         references = tf.gather(references, mask)
 
@@ -160,7 +160,6 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
     results = dated_burn_accuracy(model, dataset, num_classes)
     df = pd.DataFrame.from_dict(results)
     df.index = class_labels
-    df = df.drop(0, 1)
     df /= df.sum()
     df = df.melt(ignore_index=False).reset_index()
     df.columns = ['Predicted Class', 'Burn Age (Days)', '% Burns Predicted']
