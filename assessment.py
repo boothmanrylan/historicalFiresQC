@@ -90,8 +90,8 @@ def reference_accuracy(model, dataset, num_classes):
         # merge new and old burn classes
         predictions = tf.where(predictions > 4, 4, predictions)
 
-        # drop all 0 points in reference as they are not labelled
-        mask = tf.reshape(tf.where(references > 0), [-1])
+        # drop all negative points in reference as they are not labelled
+        mask = tf.reshape(tf.where(references >= 0), [-1])
         predictions = tf.gather(predictions, mask)
         references = tf.gather(references, mask)
 
