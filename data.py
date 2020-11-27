@@ -91,10 +91,10 @@ def parse(example, shape, get_images=True, stack_image=False,
 
     bands = ['B4', 'B5', 'B6', 'B7']
     if stack_image:
-        bands = bands.extend(['OldB4', 'OldB5', 'OldB6', 'OldB7'])
+        bands.extend(['OldB4', 'OldB5', 'OldB6', 'OldB7'])
         if include_date_difference:
             raise NotImplementedError('include_date_difference')
-            # bands = bands.append('dateDiff')
+            #Bands.append('dateDiff')
 
     image = tf.cast(
         tf.stack([
