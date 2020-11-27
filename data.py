@@ -89,30 +89,22 @@ def parse(example, shape, get_images=True, stack_image=False,
         split_burnt_noisy_annotation
     )
 
+    bands = ['B4', 'B5', 'B6', 'B7']
+    if stack_image:
+        bands = bands.extend(['OldB4', 'OldB5', 'OldB6', 'OldB7'])
+        if include_date_difference:
+            raise NotImplementedError('include_date_difference')
+            # bands = bands.append('dateDiff')
+
     image = tf.cast(
         tf.stack([
             tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
-            for k in ['B4', 'B5', 'B6', 'B7']
+            for k in bands
         ], axis=-1),
         tf.float32
     )
 
     image /= 255.0
-
-    prev_image = tf.cast(
-        tf.stack([
-            tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
-            for k in ['OldB4', 'OldB5', 'OldB6', 'OldB7']
-        ], axis=-1),
-        tf.float32
-    )
-
-    prev_image /= 255.0
-
-    if stack_image:
-        image = tf.stack([image, prev_image], axis=-1)
-        if include_date_difference:
-            image = tf.stack([image, date_difference], axis=-1)
 
     outputs = [image,
                combined_burnt_clean_annotation,
