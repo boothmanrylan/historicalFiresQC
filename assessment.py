@@ -79,10 +79,13 @@ def split_class_cm(model, dataset, true_classes=6, predicted_classes=5):
 
 def reference_accuracy(model, dataset, num_classes):
     matrix = np.zeros((num_classes, num_classes))
-    for image, reference in dataset:
-        predictions = tf.argmax(model(image, training=False), -1)
+    for images, references in dataset:
+        if model is not None:
+            predictions = tf.argmax(model(imagse, training=False), -1)
+        else:
+            predections = images
         predictions = tf.reshape(predictions, [-1])
-        references = tf.reshape(reference, [-1])
+        references = tf.reshape(references, [-1])
 
         # merge new and old burn classes
         predictions = tf.where(predictions > 4, 4, predictions)
@@ -104,7 +107,10 @@ def dated_burn_accuracy(model, dataset, num_classes):
     """
     output = {}
     for images, references in dataset:
-        predictions = tf.argmax(model(images, training=False), -1)
+        if model is not None:
+            predictions = tf.argmax(model(images, training=False), -1)
+        else:
+            predictions = images
 
         # flatten predictions and reference
         predictions = tf.reshape(predictions, [-1])
