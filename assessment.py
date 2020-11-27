@@ -81,9 +81,9 @@ def reference_accuracy(model, dataset, num_classes):
     matrix = np.zeros((num_classes, num_classes))
     for images, references in dataset:
         if model is not None:
-            predictions = tf.argmax(model(imagse, training=False), -1)
+            predictions = tf.argmax(model(images, training=False), -1)
         else:
-            predections = images
+            predictions = images
         predictions = tf.reshape(predictions, [-1])
         references = tf.reshape(references, [-1])
 

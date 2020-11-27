@@ -1,5 +1,5 @@
-import tensorflow as tf
 import itertools
+import tensorflow as tf
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
@@ -156,12 +156,12 @@ def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
 def get_dataset(patterns, shape, batch_size=64, filters=None, cache=False,
-                shuffle=False, repeat=False, prefetch=False, get_images=True
-                stack_image=False, include_date_difference=False
+                shuffle=False, repeat=False, prefetch=False, get_images=True,
+                stack_image=False, include_date_difference=False,
                 clean_annotation=False, noisy_annotation=False,
                 combined_burnt=False, split_burnt=False, get_ref_points=False,
                 get_merged_ref_points=False, get_burn_age=False,
-                get_merged_burn_age=False, get_CART_classifications=False,
+                get_merged_burn_age=False, get_CART_classification=False,
                 get_stacked_CART_classification=False):
     if not isinstance(patterns, list):
         patterns = [patterns]
