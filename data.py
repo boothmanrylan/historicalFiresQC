@@ -4,10 +4,13 @@ import itertools
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 @tf.function
-def parse(example, shape, clean_annotation=True, noisy_annotation=False,
-          combined_burnt=True, split_burnt=False, get_ref_points=False,
-          get_merged_ref_points=False, get_burn_age=False,
-          get_merged_burn_age=False):
+def parse(example, shape, get_images=True, stack_image=False,
+          include_date_difference=False, clean_annotation=False,
+          noisy_annotation=False, combined_burnt=False, split_burnt=False,
+          get_ref_points=False, get_merged_ref_points=False,
+          get_burn_age=False, get_merged_burn_age=False,
+          get_CART_classification=False,
+          get_stacked_CART_classification=False):
     """
     Parse TFRecords containing annotated MSS data.
 
@@ -26,21 +29,20 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
     image, combined clean, split clean, combined clean, split noisy
     """
 
-    # ensure at least one of clean_annotation or noisy_annotation is True
-    # if not (clean_annotation or noisy_annotation):
-    #     clean_annotation = True
-
-    # ensure at least one of combined_burnt or split_burnt is True
-    # if not (combined_burnt or split_burnt):
-    #     combined_burnt = True
-
     feature_description = {
         'B4':         tf.io.FixedLenFeature((), tf.string),
         'B5':         tf.io.FixedLenFeature((), tf.string),
         'B6':         tf.io.FixedLenFeature((), tf.string),
         'B7':         tf.io.FixedLenFeature((), tf.string),
+        'OldB4':      tf.io.FixedLenFeature((), tf.string),
+        'OldB5':      tf.io.FixedLenFeature((), tf.string),
+        'OldB6':      tf.io.FixedLenFeature((), tf.string),
+        'OldB7':      tf.io.FixedLenFeature((), tf.string),
+        'dateDiff':   tf.io.FixedLenFeature(shape, tf.float32),
         'class':      tf.io.FixedLenFeature((), tf.string),
         'noisyClass': tf.io.FixedLenFeature((), tf.string),
+        'CART':       tf.io.FixedLenFeature(shape, tf.int32),
+        'stackedCART': tf.io.FixedLenFeature(shape, tf.int32),
         'referencePoints': tf.io.FixedLenFeature(shape, tf.int64),
         'mergedReferencePoints': tf.io.FixedLenFeature(shape, tf.int64),
         'burnAge': tf.io.FixedLenFeature(shape, tf.float32),
@@ -59,29 +61,21 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
         shape
     )
 
-    ref_points = tf.reshape(
-        parsed.pop('referencePoints'),
-        # tf.io.decode_raw(parsed.pop('referencePoints'), tf.int32),
-        shape
-    )
+    ref_points = tf.reshape(parsed.pop('referencePoints'), shape)
 
-    merged_ref_points = tf.reshape(
-        parsed.pop('mergedReferencePoints'),
-        # tf.io.decode_raw(parsed.pop('mergedReferencePoints'), tf.int32),
-        shape
-    )
+    merged_ref_points = tf.reshape(parsed.pop('mergedReferencePoints'), shape)
 
-    burn_age = tf.reshape(
-        parsed.pop('burnAge'),
-        # tf.io.decode_raw(parsed.pop('burnAge'), tf.float64),
-        shape
-    )
+    burn_age = tf.reshape(parsed.pop('burnAge'), shape)
 
-    merged_burn_age = tf.reshape(
-        parsed.pop('mergedBurnAge'),
-        # tf.io.decode_raw(parsed.pop('mergedBurnAge'), tf.float64),
-        shape
-    )
+    merged_burn_age = tf.reshape(parsed.pop('mergedBurnAge'), shape)
+
+    CART_classification = tf.reshape(parsed.pop('CART'), shape)
+
+    stacked_CART_classification = tf.reshape(parsed.pop('stackedCART'), shape)
+
+    date_difference = tf.reshape(parsed.pop('dateDiff'), shape)
+
+    date_difference /= tf.reduce_max(date_difference)
 
     drop =  tf.reduce_max(split_burnt_clean_annotation)
     replace =  drop - 1
@@ -98,12 +92,29 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
     image = tf.cast(
         tf.stack([
             tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
-            for k in parsed.keys()
+            for k in ['B4', 'B5', 'B6', 'B7']
         ], axis=-1),
         tf.float32
     )
 
-    outputs = [image / 255.0,
+    image /= 255.0
+
+    prev_image = tf.cast(
+        tf.stack([
+            tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
+            for k in ['OldB4', 'OldB5', 'OldB6', 'OldB7']
+        ], axis=-1),
+        tf.float32
+    )
+
+    prev_image /= 255.0
+
+    if stack_image:
+        image = tf.stack([image, prev_image], axis=-1)
+        if include_date_difference:
+            image = tf.stack([image, date_difference], axis=-1)
+
+    outputs = [image,
                combined_burnt_clean_annotation,
                split_burnt_clean_annotation,
                combined_burnt_noisy_annotation,
@@ -111,9 +122,11 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
                ref_points,
                merged_ref_points,
                burn_age,
-               merged_burn_age]
+               merged_burn_age,
+               CART_classification,
+               stacked_CART_classification]
 
-    selectors = [True,
+    selectors = [get_images,
                  combined_burnt and clean_annotation,
                  split_burnt and clean_annotation,
                  combined_burnt and noisy_annotation,
@@ -121,7 +134,9 @@ def parse(example, shape, clean_annotation=True, noisy_annotation=False,
                  get_ref_points,
                  get_merged_ref_points,
                  get_burn_age,
-                 get_merged_burn_age]
+                 get_merged_burn_age,
+                 get_CART_classification,
+                 get_stacked_CART_classification]
 
     return list(itertools.compress(outputs, selectors))
 
@@ -140,12 +155,14 @@ def filter_no_burnt(image, annotation, *annotations):
 def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
-def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
-                shuffle=True, repeat=True, prefetch=True,
-                clean_annotation=True, noisy_annotation=False,
-                combined_burnt=True, split_burnt=False, get_ref_points=False,
+def get_dataset(patterns, shape, batch_size=64, filters=None, cache=False,
+                shuffle=False, repeat=False, prefetch=False, get_images=True
+                stack_image=False, include_date_difference=False
+                clean_annotation=False, noisy_annotation=False,
+                combined_burnt=False, split_burnt=False, get_ref_points=False,
                 get_merged_ref_points=False, get_burn_age=False,
-                get_merged_burn_age=False):
+                get_merged_burn_age=False, get_CART_classifications=False,
+                get_stacked_CART_classification=False):
     if not isinstance(patterns, list):
         patterns = [patterns]
 
@@ -156,10 +173,12 @@ def get_dataset(patterns, shape, batch_size=64, filters=None, cache=True,
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
-        lambda x: parse(x, shape, clean_annotation, noisy_annotation,
-                        combined_burnt, split_burnt, get_ref_points,
-                        get_merged_ref_points, get_burn_age,
-                        get_merged_burn_age),
+        lambda x: parse(x, shape, get_images, stack_image,
+                        include_date_difference, clean_annotation,
+                        noisy_annotation, combined_burnt, split_burnt,
+                        get_ref_points, get_merged_ref_points, get_burn_age,
+                        get_merged_burn_age, get_CART_classification,
+                        get_stacked_CART_classification),
         num_parallel_calls=AUTOTUNE
     )
 
