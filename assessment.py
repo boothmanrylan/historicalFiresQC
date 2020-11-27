@@ -91,7 +91,7 @@ def reference_accuracy(model, dataset, num_classes):
         predictions = tf.where(predictions > 4, 4, predictions)
 
         # drop all 0 points in reference as they are not labelled
-        mask = tf.reshape(tf.where(references >= 0), [-1])
+        mask = tf.reshape(tf.where(references > 0), [-1])
         predictions = tf.gather(predictions, mask)
         references = tf.gather(references, mask)
 
@@ -137,6 +137,8 @@ def dated_burn_accuracy(model, dataset, num_classes):
             # count the number of times burns of this age were labelled as each
             # class
             preds, _, counts = tf.unique_with_counts(age_i_preds)
+            preds = tf.cast(preds, tf.int32)
+            counts = tf.cast(counts, tf.int32)
 
             # its possible that some classes were never predicted, ensure they
             # are given a count of zero
