@@ -106,7 +106,7 @@ def dated_burn_accuracy(model, dataset, num_classes):
     The true burn reference point values are the age of the burn in days
     """
     output = {}
-    for images, references in dataset:
+    for images, references, burn_ages in dataset:
         if model is not None:
             predictions = tf.argmax(model(images, training=False), -1)
         else:
@@ -115,17 +115,18 @@ def dated_burn_accuracy(model, dataset, num_classes):
         # flatten predictions and reference
         predictions = tf.reshape(predictions, [-1])
         references = tf.reshape(references, [-1])
+        burn_ages = tf.reshape(burn_ages, [-1])
 
         # remove all non-burn points
-        burnmask = tf.reshape(tf.where(references >= 0), [-1])
+        burnmask = tf.reshape(tf.where(references >= 4), [-1])
+        burn_ages = tf.gather(burn_ages, burnmask)
         predictions = tf.gather(predictions, burnmask)
-        references = tf.gather(references, burnmask)
 
         # merge new and old burn class
         predictions = tf.where(predictions > 4, 4, predictions)
 
         # get all of the unique burn ages
-        ages, indices = tf.unique(references)
+        ages, indices = tf.unique(burn_ages)
 
         # for every unique burn age determine how many of them were predicted
         # as each class
