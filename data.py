@@ -44,7 +44,7 @@ def parse(example, shape, get_images=True, stack_image=False,
         'CART':       tf.io.FixedLenFeature(shape, tf.int64),
         'stackedCART': tf.io.FixedLenFeature(shape, tf.int64),
         'referencePoints': tf.io.FixedLenFeature(shape, tf.int64),
-        'mergedReferencePoints': tf.io.FixedLenFeature(shape, tf.int64),
+        'mergedReferencePoints': tf.io.FixedLenFeature(shape, tf.float32),
         'burnAge': tf.io.FixedLenFeature(shape, tf.float32),
         'mergedBurnAge': tf.io.FixedLenFeature(shape, tf.float32)
     }
