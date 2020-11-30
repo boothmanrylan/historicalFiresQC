@@ -73,7 +73,7 @@ def parse(example, shape, get_images=True, stack_image=False,
 
     stacked_CART_classification = tf.reshape(parsed.pop('stackedCART'), shape)
 
-    date_difference = tf.reshape(parsed.pop('dateDiff'), shape)
+    date_difference = tf.reshape(parsed.pop('dateDiff'), (*shape, 1))
 
     date_difference /= 1071 # hard coded maximum date difference
 
@@ -92,8 +92,6 @@ def parse(example, shape, get_images=True, stack_image=False,
     bands = ['B4', 'B5', 'B6', 'B7']
     if stack_image:
         bands.extend(['OldB4', 'OldB5', 'OldB6', 'OldB7'])
-        if include_date_difference:
-            bands.append('dateDiff')
 
     image = tf.cast(
         tf.stack([
@@ -104,6 +102,9 @@ def parse(example, shape, get_images=True, stack_image=False,
     )
 
     image /= 255.0
+
+    if include_date_difference:
+        image = tf.concat([image, date_difference], -1)
 
     outputs = [image,
                combined_burnt_clean_annotation,
