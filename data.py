@@ -75,7 +75,7 @@ def parse(example, shape, get_images=True, stack_image=False,
 
     date_difference = tf.reshape(parsed.pop('dateDiff'), shape)
 
-    date_difference /= tf.reduce_max(date_difference)
+    date_difference /= 1071 # hard coded maximum date difference
 
     drop =  tf.reduce_max(split_burnt_clean_annotation)
     replace =  drop - 1
@@ -93,8 +93,7 @@ def parse(example, shape, get_images=True, stack_image=False,
     if stack_image:
         bands.extend(['OldB4', 'OldB5', 'OldB6', 'OldB7'])
         if include_date_difference:
-            raise NotImplementedError('include_date_difference')
-            #Bands.append('dateDiff')
+            bands.append('dateDiff')
 
     image = tf.cast(
         tf.stack([
