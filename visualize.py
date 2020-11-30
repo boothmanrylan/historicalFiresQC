@@ -16,17 +16,30 @@ bounds = [0, 1, 2, 3, 4, 5, 6]
 cmap = ListedColormap(colours)
 norm = BoundaryNorm(bounds, cmap.N)
 
-def false_colour_image(image):
+def false_colour_image(image, stacked_image=False):
     """
     Convert Landsat MSS image into a flase colour image where the red channel
     is Near Infrared 1 Band, the green channel is the Near Infrader 2 band and
-    the blue channel is the red band.
+    the blue channel is the red band. If stacked_image is True, then image
+    contains two images of the same scene stacked on top of each other, return
+    false colour images of both.
     """
-    return np.stack([
-        image[:, :, -1],
-        image[:, :, -2],
-        image[:, :, -3]
+    image1 = np.stack([
+        image[:, :, 3],
+        image[:, :, 2],
+        image[:, :, 1]
     ], axis=-1)
+
+    if stacked_image:
+        image2 = np.stack([
+            image[:, :, 7],
+            image[:, :, 6],
+            image[:, :, 5]
+        ], axis=-1)
+        output = image1, image2
+    else:
+        output = image1
+    return output
 
 def calculate_vmin_vmax(image, alpha=0.9):
     mean = np.mean(image)
@@ -35,29 +48,42 @@ def calculate_vmin_vmax(image, alpha=0.9):
     vmax = mean + (alpha / 2 * std)
     return vmin, vmax
 
-def visualize(dataset, model=None, num=20):
+def visualize(dataset, model=None, num=20, stacked_image=False):
     for data in dataset.take(num):
         num_figs = len(data)
         if model is not None:
             num_figs += 1
+        if stacked_image:
+            num_figs += 1
         f, ax = plt.subplots(1, num_figs, figsize=(15, 30))
 
         image = tf.squeeze(data[0][0]).numpy()
-        fci = false_colour_image(image)
-        vmin, vmax = calculate_vmin_vmax(fci)
-        ax[0].imshow(fci, vmin=vmin, vmax=vmax)
-        ax[0].set_title('Input Patch')
+        fcis = false_colour_image(image, stacked_image)
+        if not stacked_image:
+            vmin, vmax = calculate_vmin_vmax(fcis)
+            ax[0].imshow(fcis, vmin=vmin, vmax=vmax)
+            ax[0].set_title('Input Patch')
+        else:
+            vmin, vmax = calculate_vmin_vmax(fcis[0])
+            ax[0].imshow(fcis[0], vmin=vmin, vmax=vmax)
+            ax[0].set_title('Current Patch')
+            vmin, vmax = calculate_vmin_vmax(fcis[1])
+            ax[1].imshow(fcis[1], vmin=vmin, vmax=vmax)
+            ax[1].set_title('Previous Patch')
 
+        offset = 2 if stacked_image else 1
         for i, annotations in enumerate(data[1:]):
             annotation = tf.squeeze(annotations[0]).numpy()
-            ax[i + 1].imshow(annotation, vmin=0, vmax=len(colours), cmap=cmap,
-                             interpolation='nearest', norm=norm)
-            ax[i + 1].set_title(f'Annotation {i + 1}')
+            ax[i + offset].imshow(annotation, vmin=0, vmax=len(colours),
+                                  cmap=cmap, interpolation='nearest',
+                                  norm=norm)
+            ax[i + offset].set_title(f'Annotation {i + 1}')
 
         if model is not None:
             prediction = tf.argmax(
                 model(data[0], training=False)[0], -1
             ).numpy()
-            ax[num_figs - 1].imshow(prediction, vmin=0, vmax=len(colours), cmap=cmap,
-                                    interpolation='nearest', norm=norm)
+            ax[num_figs - 1].imshow(prediction, vmin=0, vmax=len(colours),
+                                    cmap=cmap, interpolation='nearest',
+                                    norm=norm)
             ax[num_figs - 1].set_title('Model Prediction')
