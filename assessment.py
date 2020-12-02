@@ -99,7 +99,7 @@ def reference_accuracy(model, dataset, num_classes):
     return matrix
 
 
-def dated_burn_accuracy(model, dataset, num_classes):
+def dated_burn_accuracy(model, dataset, num_classes, use_months=False):
     """
     Dataset is expected to return tuples of image, references points
     All non-negative references are true burns
@@ -131,6 +131,10 @@ def dated_burn_accuracy(model, dataset, num_classes):
         # for every unique burn age determine how many of them were predicted
         # as each class
         for i, age in enumerate(ages.numpy()):
+            if use_months:
+                # convert the age in days to ~months (floored)
+                age = np.floor(age / 30.0).astype(int)
+
             # get all the predictions for the current burn age
             age_i_mask = tf.reshape(tf.where(indices == i), [-1])
             age_i_preds = tf.gather(predictions, age_i_mask)
@@ -158,14 +162,21 @@ def dated_burn_accuracy(model, dataset, num_classes):
         output[k] = list(v.numpy())
     return output
 
-def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
+def plot_burn_accuracy_by_burn_age(model, dataset, class_labels,
+                                   use_months=False):
     num_classes = len(class_labels)
-    results = dated_burn_accuracy(model, dataset, num_classes)
+    results = dated_burn_accuracy(model, dataset, num_classes, use_months)
     df = pd.DataFrame.from_dict(results)
     df.index = class_labels
     df /= df.sum()
     df = df.melt(ignore_index=False).reset_index()
-    df.columns = ['Predicted Class', 'Burn Age (Days)', '% Burns Predicted']
+
+    if use_months:
+        age_label = 'Burn Age (Months)'
+    else:
+        age_label = 'Burn Age (Days)'
+
+    df.columns = ['Predicted Class', age_label, '% Burns Predicted']
 
     sns.set_theme()
     palette = sns.crayon_palette(
