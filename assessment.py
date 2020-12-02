@@ -99,12 +99,19 @@ def reference_accuracy(model, dataset, num_classes):
     return matrix
 
 
-def dated_burn_accuracy(model, dataset, num_classes, use_months=False):
+def dated_burn_accuracy(model, dataset, num_classes, scale):
     """
     Dataset is expected to return tuples of image, references points
     All non-negative references are true burns
     The true burn reference point values are the age of the burn in days
     """
+    try:
+        assert scale in ['days', 'months', 'years']
+    except AssertionError as E:
+        raise ValueError(
+            f'scale must be one of days, months, or years got {scale}'
+        ) from E
+    scale_factor = 1 if scale == 'days' else 30 if scale == 'months' else 365
     output = {}
     for images, references, burn_ages in dataset:
         if model is not None:
@@ -131,9 +138,8 @@ def dated_burn_accuracy(model, dataset, num_classes, use_months=False):
         # for every unique burn age determine how many of them were predicted
         # as each class
         for i, age in enumerate(ages.numpy()):
-            if use_months:
-                # convert the age in days to ~months (floored)
-                age = np.floor(age / 30.0).astype(int)
+            # convert age to days, months, or years (floored)
+            age = np.floor(age / scale_factor).astype(int)
 
             # get all the predictions for the current burn age
             age_i_mask = tf.reshape(tf.where(indices == i), [-1])
@@ -163,18 +169,21 @@ def dated_burn_accuracy(model, dataset, num_classes, use_months=False):
     return output
 
 def plot_burn_accuracy_by_burn_age(model, dataset, class_labels,
-                                   use_months=False):
+                                   scale='days'):
+    try:
+        assert scale in ['days', 'months', 'years']
+    except AssertionError as E:
+        raise ValueError(
+            f'scale must be one of days, months, or years got {scale}'
+        ) from E
     num_classes = len(class_labels)
-    results = dated_burn_accuracy(model, dataset, num_classes, use_months)
+    results = dated_burn_accuracy(model, dataset, num_classes, scale)
     df = pd.DataFrame.from_dict(results)
     df.index = class_labels
     df /= df.sum()
     df = df.melt(ignore_index=False).reset_index()
 
-    if use_months:
-        age_label = 'Burn Age (Months)'
-    else:
-        age_label = 'Burn Age (Days)'
+    age_label = f'Burn Age ({scale.capitalize()})'
 
     df.columns = ['Predicted Class', age_label, '% Burns Predicted']
 
