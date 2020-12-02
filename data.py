@@ -103,7 +103,7 @@ def parse(example, shape, get_images=True, stack_image=False,
 
     image /= 255.0
 
-    if include_date_difference:
+    if stack_image and include_date_difference:
         image = tf.concat([image, date_difference], -1)
 
     outputs = [image,
