@@ -186,6 +186,6 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels,
 
     df = df[df['Predicted Class'].isin(hue_order)]
 
-    sns.lmplot(x='Burn Age (Days)', y='% Burns Predicted',
+    sns.lmplot(x=age_label, y='% Burns Predicted',
                hue='Predicted Class', data=df, palette=palette,
                hue_order=hue_order, height=4, aspect=1.75)
