@@ -79,16 +79,19 @@ def split_class_cm(model, dataset, true_classes=6, predicted_classes=5):
 
 def reference_accuracy(model, dataset, num_classes):
     matrix = np.zeros((num_classes, num_classes))
-    for image, reference in dataset:
-        predictions = tf.argmax(model(image, training=False), -1)
+    for images, references in dataset:
+        if model is not None:
+            predictions = tf.argmax(model(images, training=False), -1)
+        else:
+            predictions = images
         predictions = tf.reshape(predictions, [-1])
-        references = tf.reshape(reference, [-1])
+        references = tf.reshape(references, [-1])
 
         # merge new and old burn classes
         predictions = tf.where(predictions > 4, 4, predictions)
 
-        # drop all 0 points in reference as they are not labelled
-        mask = tf.reshape(tf.where(references != 0), [-1])
+        # drop all negative points in reference as they are not labelled
+        mask = tf.reshape(tf.where(references >= 0), [-1])
         predictions = tf.gather(predictions, mask)
         references = tf.gather(references, mask)
 
@@ -96,34 +99,48 @@ def reference_accuracy(model, dataset, num_classes):
     return matrix
 
 
-def dated_burn_accuracy(model, dataset, num_classes):
+def dated_burn_accuracy(model, dataset, num_classes, scale):
     """
     Dataset is expected to return tuples of image, references points
     All non-negative references are true burns
     The true burn reference point values are the age of the burn in days
     """
+    try:
+        assert scale in ['days', 'months', 'years']
+    except AssertionError as E:
+        raise ValueError(
+            f'scale must be one of days, months, or years got {scale}'
+        ) from E
+    scale_factor = 1 if scale == 'days' else 30 if scale == 'months' else 365
     output = {}
-    for images, references in dataset:
-        predictions = tf.argmax(model(images, training=False), -1)
+    for images, references, burn_ages in dataset:
+        if model is not None:
+            predictions = tf.argmax(model(images, training=False), -1)
+        else:
+            predictions = images
 
         # flatten predictions and reference
         predictions = tf.reshape(predictions, [-1])
         references = tf.reshape(references, [-1])
+        burn_ages = tf.reshape(burn_ages, [-1])
 
         # remove all non-burn points
-        burnmask = tf.reshape(tf.where(references >= 0), [-1])
+        burnmask = tf.reshape(tf.where(references == 4), [-1])
+        burn_ages = tf.gather(burn_ages, burnmask)
         predictions = tf.gather(predictions, burnmask)
-        references = tf.gather(references, burnmask)
 
         # merge new and old burn class
         predictions = tf.where(predictions > 4, 4, predictions)
 
         # get all of the unique burn ages
-        ages, indices = tf.unique(references)
+        ages, indices = tf.unique(burn_ages)
 
         # for every unique burn age determine how many of them were predicted
         # as each class
         for i, age in enumerate(ages.numpy()):
+            # convert age to days, months, or years (floored)
+            age = np.floor(age / scale_factor).astype(int)
+
             # get all the predictions for the current burn age
             age_i_mask = tf.reshape(tf.where(indices == i), [-1])
             age_i_preds = tf.gather(predictions, age_i_mask)
@@ -131,6 +148,8 @@ def dated_burn_accuracy(model, dataset, num_classes):
             # count the number of times burns of this age were labelled as each
             # class
             preds, _, counts = tf.unique_with_counts(age_i_preds)
+            preds = tf.cast(preds, tf.int32)
+            counts = tf.cast(counts, tf.int32)
 
             # its possible that some classes were never predicted, ensure they
             # are given a count of zero
@@ -149,15 +168,24 @@ def dated_burn_accuracy(model, dataset, num_classes):
         output[k] = list(v.numpy())
     return output
 
-def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
+def plot_burn_accuracy_by_burn_age(model, dataset, class_labels,
+                                   scale='days'):
+    try:
+        assert scale in ['days', 'months', 'years']
+    except AssertionError as E:
+        raise ValueError(
+            f'scale must be one of days, months, or years got {scale}'
+        ) from E
     num_classes = len(class_labels)
-    results = dated_burn_accuracy(model, dataset, num_classes)
+    results = dated_burn_accuracy(model, dataset, num_classes, scale)
     df = pd.DataFrame.from_dict(results)
     df.index = class_labels
-    df = df.drop(0, 1)
     df /= df.sum()
     df = df.melt(ignore_index=False).reset_index()
-    df.columns = ['Predicted Class', 'Burn Age (Days)', '% Burns Predicted']
+
+    age_label = f'Burn Age ({scale.capitalize()})'
+
+    df.columns = ['Predicted Class', age_label, '% Burns Predicted']
 
     sns.set_theme()
     palette = sns.crayon_palette(
@@ -167,6 +195,6 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels):
 
     df = df[df['Predicted Class'].isin(hue_order)]
 
-    sns.lmplot(x='Burn Age (Days)', y='% Burns Predicted',
+    sns.lmplot(x=age_label, y='% Burns Predicted',
                hue='Predicted Class', data=df, palette=palette,
                hue_order=hue_order, height=4, aspect=1.75)

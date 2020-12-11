@@ -51,3 +51,15 @@ def build_unet_model(input_shape, classes):
     x = last(x)
 
     return tf.keras.Model(inputs=inputs, outputs=x)
+
+def weighted_loss(loss_fn, weights, **loss_args):
+    '''
+    loss_fn: any loss function, such as categorical_crossentropy
+    weights: list of n elements where the ith element corresponds to the
+             weight of the ith class.
+    loss_args: any named arguments to pass to the loss_fn, such as from_logits
+    '''
+    def fn(true, pred):
+        loss = loss_fn(true, pred, **loss_args)
+        return loss * tf.gather(weights, tf.cast(true, tf.int32))
+    return fn
