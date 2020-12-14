@@ -50,7 +50,7 @@ def calculate_vmin_vmax(image, alpha=0.9):
 
 def visualize(dataset, model=None, num=20, stacked_image=False):
     for images, annotations in dataset.take(num):
-        num_figs = 1 + annotation.shape[-1] if annotations.ndim == 4 else 2
+        num_figs = 1 + annotations.shape[-1] if annotations.ndim == 4 else 2
         if model is not None:
             num_figs += 1
         if stacked_image:
