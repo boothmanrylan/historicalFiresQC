@@ -3,33 +3,26 @@ import tensorflow as tf
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-feature_description = {
-    'B4':                    tf.io.FixedLenFeature((), tf.string),
-    'B5':                    tf.io.FixedLenFeature((), tf.string),
-    'B6':                    tf.io.FixedLenFeature((), tf.string),
-    'B7':                    tf.io.FixedLenFeature((), tf.string),
-    'OldB4':                 tf.io.FixedLenFeature((), tf.string),
-    'OldB5':                 tf.io.FixedLenFeature((), tf.string),
-    'OldB6':                 tf.io.FixedLenFeature((), tf.string),
-    'OldB7':                 tf.io.FixedLenFeature((), tf.string),
-    'dateDiff':              tf.io.FixedLenFeature((), tf.float32),
-    'class':                 tf.io.FixedLenFeature((), tf.string),
-    'noisyClass':            tf.io.FixedLenFeature((), tf.string),
-    'CART':                  tf.io.FixedLenFeature((), tf.int64),
-    'stackedCART':           tf.io.FixedLenFeature((), tf.int64),
-    'referencePoints':       tf.io.FixedLenFeature((), tf.float32),
-    'mergedReferencePoints': tf.io.FixedLenFeature((), tf.float32),
-    'burnAge':               tf.io.FixedLenFeature((), tf.float32),
-    'mergedBurnAge':         tf.io.FixedLenFeature((), tf.float32)
-}
 
 # some earth engine bands come as tf.string and require tf.io.decode_raw to
 # parse, others come as their expected dtype and dont, unclear why
 string_bands = ['B4', 'B5', 'B6', 'B7', 'OldB4', 'OldB5',
                 'OldB6', 'OldB7', 'class', 'noisyClass']
+float_bands = ['dateDiff', 'referencePoints', 'mergedReferencePoints',
+               'burnAge', 'mergedBurnAge']
+int_bands = ['CART', 'stackedCART']
 
 @tf.function
 def parse(example, shape, image_bands, annotation_bands, combine=None):
+    feature_description = {
+        k: tf.io.FixedLenFeature((), tf.string) for k in string_bands
+    }
+    feature_dscription.update({
+        k: tf.io.FixedLenFeature(shape, tf.float32) for k in float_bands
+    })
+    feature_description.update({
+        k: tf.io.FixedLenFeature(shape, tf.int64) for k in int_bands
+    })
     def stack_bands(parsed_example, band_names, output_dtype):
         return tf.cast(
             tf.stack([
