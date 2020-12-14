@@ -43,7 +43,7 @@ def parse(example, shape, image_bands, annotation_bands, combine=None):
     annotation = stack_bands(parsed, annotation_bands, tf.int64)
 
     if combine is not None:
-        for k, v in combine:
+        for k, v in combine.items():
             annotation = tf.where(annotation == k, v, annotation)
 
     # the date difference needs to be scaled by a different value than the
