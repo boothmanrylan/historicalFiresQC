@@ -24,15 +24,19 @@ def parse(example, shape, image_bands, annotation_bands, combine=None):
         k: tf.io.FixedLenFeature(shape, tf.int64) for k in int_bands
     })
     def stack_bands(parsed_example, band_names, output_dtype):
-        return tf.cast(
-            tf.stack([
-                tf.reshape(tf.io.decode_raw(parsed_example[band], tf.uint8), shape)
-                if band in string_bands
-                else tf.reshape(parsed_example[band], shape)
-                for band in band_names
-            ], axis=-1),
-            output_dtype
-        )
+        bands = [
+            tf.cast(
+                tf.reshape(
+                    tf.io.decode_raw(parsed_example[band], tf.uint8),
+                    shape
+                ),
+                output_dtype
+            )
+            if band in string_bands
+            else tf.cast(parsed_example[band], output_dtype)
+            for band in band_names
+        ]
+        return tf.stack(bands, axis=-1)
 
     parsed = tf.io.parse_single_example(example, feature_description)
 
