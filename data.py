@@ -17,7 +17,7 @@ def parse(example, shape, image_bands, annotation_bands, combine=None):
     feature_description = {
         k: tf.io.FixedLenFeature((), tf.string) for k in string_bands
     }
-    feature_dscription.update({
+    feature_description.update({
         k: tf.io.FixedLenFeature(shape, tf.float32) for k in float_bands
     })
     feature_description.update({
@@ -89,6 +89,15 @@ def parse_all(example, shape, get_images=True, stack_image=False,
     are returned the output will always be in this order:
     image, combined clean, split clean, combined clean, split noisy
     """
+    feature_description = {
+        k: tf.io.FixedLenFeature((), tf.string) for k in string_bands
+    }
+    feature_description.update({
+        k: tf.io.FixedLenFeature(shape, tf.float32) for k in float_bands
+    })
+    feature_description.update({
+        k: tf.io.FixedLenFeature(shape, tf.int64) for k in int_bands
+    })
 
     parsed = tf.io.parse_single_example(example, feature_description)
 
@@ -199,12 +208,6 @@ def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
         image_bands = [image_bands]
     if not isinstance(annotation_bands, list):
         annotation_bands = [annotation_bands]
-
-    try:
-        for b in image_bands + annotation_bands:
-            assert b in feature_description
-    except AssertionError as E:
-        raise ValueError('Got bad band name') from E
 
     files = tf.data.Dataset.list_files(patterns[0])
 
