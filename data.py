@@ -44,6 +44,7 @@ def parse(example, shape, image_bands, annotation_bands, combine=None):
 
     if combine is not None:
         for k, v in combine.items():
+            k, v = tf.cast(k, annotation.dtype), tf.cast(v, annotation.dtype)
             annotation = tf.where(annotation == k, v, annotation)
 
     # the date difference needs to be scaled by a different value than the
