@@ -57,7 +57,7 @@ def visualize(dataset, model=None, num=20, stacked_image=False):
             num_figs += 1
         f, ax = plt.subplots(1, num_figs, figsize=(15, 30))
 
-        image = tf.squeeze(images[0][0]).numpy()
+        image = tf.squeeze(images[0]).numpy()
         fcis = false_colour_image(image, stacked_image)
         if not stacked_image:
             vmin, vmax = calculate_vmin_vmax(fcis)
