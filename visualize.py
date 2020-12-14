@@ -49,8 +49,8 @@ def calculate_vmin_vmax(image, alpha=0.9):
     return vmin, vmax
 
 def visualize(dataset, model=None, num=20, stacked_image=False):
-    for data in dataset.take(num):
-        num_figs = len(data)
+    for images, annotations in dataset.take(num):
+        num_figs = 1 + annotation.shape[-1] if annotations.ndim == 4 else 2
         if model is not None:
             num_figs += 1
         if stacked_image:
@@ -72,12 +72,19 @@ def visualize(dataset, model=None, num=20, stacked_image=False):
             ax[1].set_title('Previous Patch')
 
         offset = 2 if stacked_image else 1
-        for i, annotations in enumerate(data[1:]):
+        if annotations.ndim == 4:
+            for i in range(annotations.shape[-1]):
+                annotation = tf.squeeze(annotations[0, :, :, i]).numpy()
+                ax[i + offset].imshow(annotation, vmin=0, vmax=len(colours),
+                                      cmap=cmap, interpolation='nearest',
+                                      norm=norm)
+                ax[i + offset].set_title(f'Annotation {i + 1}')
+        else:
             annotation = tf.squeeze(annotations[0]).numpy()
-            ax[i + offset].imshow(annotation, vmin=0, vmax=len(colours),
-                                  cmap=cmap, interpolation='nearest',
-                                  norm=norm)
-            ax[i + offset].set_title(f'Annotation {i + 1}')
+            ax[offset].imshow(annotation, vmin=0, vmax=len(colours),
+                              cmap=cmap, interpotlation='nearest',
+                              norm=norm)
+            ax[offset].set_title('Annotation')
 
         if model is not None:
             prediction = tf.argmax(
