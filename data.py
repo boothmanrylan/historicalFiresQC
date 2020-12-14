@@ -4,23 +4,23 @@ import tensorflow as tf
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 feature_description = {
-    'B4':         tf.io.FixedLenFeature((), tf.string),
-    'B5':         tf.io.FixedLenFeature((), tf.string),
-    'B6':         tf.io.FixedLenFeature((), tf.string),
-    'B7':         tf.io.FixedLenFeature((), tf.string),
-    'OldB4':      tf.io.FixedLenFeature((), tf.string),
-    'OldB5':      tf.io.FixedLenFeature((), tf.string),
-    'OldB6':      tf.io.FixedLenFeature((), tf.string),
-    'OldB7':      tf.io.FixedLenFeature((), tf.string),
-    'dateDiff':   tf.io.FixedLenFeature(shape, tf.float32),
-    'class':      tf.io.FixedLenFeature((), tf.string),
-    'noisyClass': tf.io.FixedLenFeature((), tf.string),
-    'CART':       tf.io.FixedLenFeature(shape, tf.int64),
-    'stackedCART': tf.io.FixedLenFeature(shape, tf.int64),
-    'referencePoints': tf.io.FixedLenFeature(shape, tf.float32),
-    'mergedReferencePoints': tf.io.FixedLenFeature(shape, tf.float32),
-    'burnAge': tf.io.FixedLenFeature(shape, tf.float32),
-    'mergedBurnAge': tf.io.FixedLenFeature(shape, tf.float32)
+    'B4':                    tf.io.FixedLenFeature((), tf.string),
+    'B5':                    tf.io.FixedLenFeature((), tf.string),
+    'B6':                    tf.io.FixedLenFeature((), tf.string),
+    'B7':                    tf.io.FixedLenFeature((), tf.string),
+    'OldB4':                 tf.io.FixedLenFeature((), tf.string),
+    'OldB5':                 tf.io.FixedLenFeature((), tf.string),
+    'OldB6':                 tf.io.FixedLenFeature((), tf.string),
+    'OldB7':                 tf.io.FixedLenFeature((), tf.string),
+    'dateDiff':              tf.io.FixedLenFeature((), tf.float32),
+    'class':                 tf.io.FixedLenFeature((), tf.string),
+    'noisyClass':            tf.io.FixedLenFeature((), tf.string),
+    'CART':                  tf.io.FixedLenFeature((), tf.int64),
+    'stackedCART':           tf.io.FixedLenFeature((), tf.int64),
+    'referencePoints':       tf.io.FixedLenFeature((), tf.float32),
+    'mergedReferencePoints': tf.io.FixedLenFeature((), tf.float32),
+    'burnAge':               tf.io.FixedLenFeature((), tf.float32),
+    'mergedBurnAge':         tf.io.FixedLenFeature((), tf.float32)
 }
 
 # some earth engine bands come as tf.string and require tf.io.decode_raw to
@@ -29,13 +29,13 @@ string_bands = ['B4', 'B5', 'B6', 'B7', 'OldB4', 'OldB5',
                 'OldB6', 'OldB7', 'class', 'noisyClass']
 
 @tf.function
-def parse(example, shape, image_bands, annotation_bands):
+def parse(example, shape, image_bands, annotation_bands, combine=None):
     def stack_bands(parsed_example, band_names, output_dtype):
         return tf.cast(
             tf.stack([
                 tf.reshape(tf.io.decode_raw(parsed[band], tf.uint8), shape)
                 if band in string_bands
-                else tf.reshape(parsed[band], shape)
+                else tf.reshape(parsed_example[band], shape)
                 for band in band_names
             ], axis=-1),
             output_dtype
@@ -45,9 +45,13 @@ def parse(example, shape, image_bands, annotation_bands):
 
     annotation = stack_bands(parsed, annotation_bands, tf.int64)
 
+    if combine is not None:
+        for k, v in combine:
+            annotation = tf.where(annotation == k, v, annotation)
+
     # the date difference needs to be scaled by a different value than the
     # other possible image bands therefore extract it on its own and concat
-    # with the rest of image after scaling both separately 
+    # with the rest of image after scaling both separately
     if 'dateDiff' in image_bands:
         image_bands.remove('dateDiff')
         date_diff = tf.reshape(parsed.pop('dateDiff'), (*shape, 1))
@@ -59,12 +63,13 @@ def parse(example, shape, image_bands, annotation_bands):
     image /= 255.0
 
     if date_diff is not None:
-        image = tf.concat([image, date_diff], axis=-1)
+        image = tf.concat([image, date_diff], -1)
 
     # stack_bands adds an extra dimension with shape 1 if called on a single
     # band, remove it here with squeeze (does nothing if no dim with shape 1
     # exists)
     return tf.squeeze(image), tf.squeeze(annotation)
+
 
 @tf.function
 def parse_all(example, shape, get_images=True, stack_image=False,
@@ -175,6 +180,7 @@ def parse_all(example, shape, get_images=True, stack_image=False,
 
     return list(itertools.compress(outputs, selectors))
 
+
 def filter_blank(image, annotation, *annotations):
     return not (tf.reduce_min(annotation) == 0 and
                 tf.reduce_max(annotation) == 0)
@@ -190,13 +196,13 @@ def filter_no_burnt(image, annotation, *annotations):
 def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
-def get_dataset(patterns, shape, image_bands, annotation_bands, batch_size=64,
-                filters=None, cache=False, shuffle=False, repeat=False,
-                prefetch=False):
+def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
+                batch_size=64, filters=None, cache=False, shuffle=False,
+                repeat=False, prefetch=False):
 
     if not isinstance(patterns, list):
         patterns = [patterns]
-    if not isinstnace(image_bands, list):
+    if not isinstance(image_bands, list):
         image_bands = [image_bands]
     if not isinstance(annotation_bands, list):
         annotation_bands = [annotation_bands]
@@ -214,7 +220,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands, batch_size=64,
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
-        lambda x: parse(x, shape, image_bands, annotation_bands),
+        lambda x: parse(x, shape, image_bands, annotation_bands, combine),
         num_parallel_calls=AUTOTUNE
     )
 
