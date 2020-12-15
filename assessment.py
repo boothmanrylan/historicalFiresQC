@@ -113,7 +113,8 @@ def dated_burn_accuracy(model, dataset, num_classes, scale):
         ) from E
     scale_factor = 1 if scale == 'days' else 30 if scale == 'months' else 365
     output = {}
-    for images, references, burn_ages in dataset:
+    for images, references in dataset:
+        references, burn_ages = references[:, :, :, 0], references[:, :, :, 1]
         if model is not None:
             predictions = tf.argmax(model(images, training=False), -1)
         else:
