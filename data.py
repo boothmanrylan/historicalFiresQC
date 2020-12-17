@@ -204,7 +204,7 @@ def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
 def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
-                batch_size=64, filters=None, cache=False, shuffle=False,
+                batch_size=64, filters=True, cache=False, shuffle=False,
                 repeat=False, prefetch=False):
 
     if not isinstance(patterns, list):
@@ -225,13 +225,13 @@ def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
         num_parallel_calls=AUTOTUNE
     )
 
-    dataset = dataset.filter(filter_blank).filter(filter_nan)
-
-    if filters is not None:
-        if not isinstance(filters, list):
-            filters = [filters]
-        for f in filters:
-            dataset = dataset.filter(f)
+    if filters:
+        dataset = dataset.filter(filter_blank).filter(filter_nan)
+        if not isinstance(filters, bool):
+            if not isinstance(filters, list):
+                filters = [filters]
+            for f in filters:
+                dataset = dataset.filter(f)
 
     if cache:
         dataset = dataset.cache()
