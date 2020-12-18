@@ -220,7 +220,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
         for p in patterns[1:]:
             files = files.concatenate(tf.data.Dataset.list_files(p))
     else: # pattern are complete file names
-        files = tf.data.Dataset.list_files(patterns)
+        files = tf.data.Dataset.list_files(patterns, shuffle=False)
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
