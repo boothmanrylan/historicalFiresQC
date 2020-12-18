@@ -214,10 +214,13 @@ def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
     if not isinstance(annotation_bands, list):
         annotation_bands = [annotation_bands]
 
-    files = tf.data.Dataset.list_files(patterns[0])
+    if '*' in patterns[0]: # patterns need unix style file expansion
+        files = tf.data.Dataset.list_files(patterns[0])
 
-    for p in patterns[1:]:
-        files = files.concatenate(tf.data.Dataset.list_files(p))
+        for p in patterns[1:]:
+            files = files.concatenate(tf.data.Dataset.list_files(p))
+    else: # pattern are complete file names
+        files = tf.data.Dataset.list_files(patterns)
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
