@@ -82,7 +82,7 @@ def visualize(dataset, model=None, num=20, stacked_image=False):
         else:
             annotation = tf.squeeze(annotations[0]).numpy()
             ax[offset].imshow(annotation, vmin=0, vmax=len(colours),
-                              cmap=cmap, interpotlation='nearest',
+                              cmap=cmap, interpolation='nearest',
                               norm=norm)
             ax[offset].set_title('Annotation')
 
