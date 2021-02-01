@@ -3,8 +3,75 @@ import tensorflow as tf
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
+
+# some earth engine bands come as tf.string and require tf.io.decode_raw to
+# parse, others come as their expected dtype and dont, unclear why
+string_bands = ['B4', 'B5', 'B6', 'B7', 'OldB4', 'OldB5',
+                'OldB6', 'OldB7', 'class', 'noisyClass']
+float_bands = ['dateDiff', 'referencePoints', 'mergedReferencePoints',
+               'burnAge', 'mergedBurnAge']
+int_bands = ['CART', 'stackedCART']
+
 @tf.function
-def parse(example, shape, get_images=True, stack_image=False,
+def parse(example, shape, image_bands, annotation_bands, combine=None):
+    feature_description = {
+        k: tf.io.FixedLenFeature((), tf.string) for k in string_bands
+    }
+    feature_description.update({
+        k: tf.io.FixedLenFeature(shape, tf.float32) for k in float_bands
+    })
+    feature_description.update({
+        k: tf.io.FixedLenFeature(shape, tf.int64) for k in int_bands
+    })
+    def stack_bands(parsed_example, band_names, output_dtype):
+        bands = [
+            tf.cast(
+                tf.reshape(
+                    tf.io.decode_raw(parsed_example[band], tf.uint8),
+                    shape
+                ),
+                output_dtype
+            )
+            if band in string_bands
+            else tf.cast(parsed_example[band], output_dtype)
+            for band in band_names
+        ]
+        return tf.stack(bands, axis=-1)
+
+    parsed = tf.io.parse_single_example(example, feature_description)
+
+    annotation = stack_bands(parsed, annotation_bands, tf.int64)
+
+    if combine is not None:
+        for original, change in combine:
+            original = tf.cast(original, annotation.dtype)
+            change = tf.cast(change, annotation.dtype)
+            annotation = tf.where(annotation == original, change, annotation)
+
+    # the date difference needs to be scaled by a different value than the
+    # other possible image bands therefore extract it on its own and concat
+    # with the rest of image after scaling both separately
+    if 'dateDiff' in image_bands:
+        image_bands.remove('dateDiff')
+        date_diff = tf.reshape(parsed.pop('dateDiff'), (*shape, 1))
+        date_diff /= 1071 # hard coded max date difference
+    else:
+        date_diff = None
+
+    image = stack_bands(parsed, image_bands, tf.float32)
+    image /= 255.0
+
+    if date_diff is not None:
+        image = tf.concat([image, date_diff], -1)
+
+    # stack_bands adds an extra dimension with shape 1 if called on a single
+    # band, remove it here with squeeze (does nothing if no dim with shape 1
+    # exists)
+    return tf.squeeze(image), tf.squeeze(annotation)
+
+
+@tf.function
+def parse_all(example, shape, get_images=True, stack_image=False,
           include_date_difference=False, clean_annotation=False,
           noisy_annotation=False, combined_burnt=False, split_burnt=False,
           get_ref_points=False, get_merged_ref_points=False,
@@ -28,26 +95,15 @@ def parse(example, shape, get_images=True, stack_image=False,
     are returned the output will always be in this order:
     image, combined clean, split clean, combined clean, split noisy
     """
-
     feature_description = {
-        'B4':         tf.io.FixedLenFeature((), tf.string),
-        'B5':         tf.io.FixedLenFeature((), tf.string),
-        'B6':         tf.io.FixedLenFeature((), tf.string),
-        'B7':         tf.io.FixedLenFeature((), tf.string),
-        'OldB4':      tf.io.FixedLenFeature((), tf.string),
-        'OldB5':      tf.io.FixedLenFeature((), tf.string),
-        'OldB6':      tf.io.FixedLenFeature((), tf.string),
-        'OldB7':      tf.io.FixedLenFeature((), tf.string),
-        'dateDiff':   tf.io.FixedLenFeature(shape, tf.float32),
-        'class':      tf.io.FixedLenFeature((), tf.string),
-        'noisyClass': tf.io.FixedLenFeature((), tf.string),
-        'CART':       tf.io.FixedLenFeature(shape, tf.int64),
-        'stackedCART': tf.io.FixedLenFeature(shape, tf.int64),
-        'referencePoints': tf.io.FixedLenFeature(shape, tf.float32),
-        'mergedReferencePoints': tf.io.FixedLenFeature(shape, tf.float32),
-        'burnAge': tf.io.FixedLenFeature(shape, tf.float32),
-        'mergedBurnAge': tf.io.FixedLenFeature(shape, tf.float32)
+        k: tf.io.FixedLenFeature((), tf.string) for k in string_bands
     }
+    feature_description.update({
+        k: tf.io.FixedLenFeature(shape, tf.float32) for k in float_bands
+    })
+    feature_description.update({
+        k: tf.io.FixedLenFeature(shape, tf.int64) for k in int_bands
+    })
 
     parsed = tf.io.parse_single_example(example, feature_description)
 
@@ -132,6 +188,7 @@ def parse(example, shape, get_images=True, stack_image=False,
 
     return list(itertools.compress(outputs, selectors))
 
+
 def filter_blank(image, annotation, *annotations):
     return not (tf.reduce_min(annotation) == 0 and
                 tf.reduce_max(annotation) == 0)
@@ -147,40 +204,38 @@ def filter_no_burnt(image, annotation, *annotations):
 def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
-def get_dataset(patterns, shape, batch_size=64, filters=None, cache=False,
-                shuffle=False, repeat=False, prefetch=False, get_images=True,
-                stack_image=False, include_date_difference=False,
-                clean_annotation=False, noisy_annotation=False,
-                combined_burnt=False, split_burnt=False, get_ref_points=False,
-                get_merged_ref_points=False, get_burn_age=False,
-                get_merged_burn_age=False, get_CART_classification=False,
-                get_stacked_CART_classification=False):
+def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
+                batch_size=64, filters=True, cache=False, shuffle=False,
+                repeat=False, prefetch=False):
+
     if not isinstance(patterns, list):
         patterns = [patterns]
+    if not isinstance(image_bands, list):
+        image_bands = [image_bands]
+    if not isinstance(annotation_bands, list):
+        annotation_bands = [annotation_bands]
 
-    files = tf.data.Dataset.list_files(patterns[0])
+    if '*' in patterns[0]: # patterns need unix style file expansion
+        files = tf.data.Dataset.list_files(patterns[0])
 
-    for p in patterns[1:]:
-        files = files.concatenate(tf.data.Dataset.list_files(p))
+        for p in patterns[1:]:
+            files = files.concatenate(tf.data.Dataset.list_files(p))
+    else: # pattern are complete file names
+        files = tf.data.Dataset.list_files(patterns, shuffle=False)
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
-        lambda x: parse(x, shape, get_images, stack_image,
-                        include_date_difference, clean_annotation,
-                        noisy_annotation, combined_burnt, split_burnt,
-                        get_ref_points, get_merged_ref_points, get_burn_age,
-                        get_merged_burn_age, get_CART_classification,
-                        get_stacked_CART_classification),
+        lambda x: parse(x, shape, image_bands, annotation_bands, combine),
         num_parallel_calls=AUTOTUNE
     )
 
-    dataset = dataset.filter(filter_blank).filter(filter_nan)
-
-    if filters is not None:
-        if not isinstance(filters, list):
-            filters = [filters]
-        for f in filters:
-            dataset = dataset.filter(f)
+    if filters:
+        dataset = dataset.filter(filter_blank).filter(filter_nan)
+        if not isinstance(filters, bool):
+            if not isinstance(filters, list):
+                filters = [filters]
+            for f in filters:
+                dataset = dataset.filter(f)
 
     if cache:
         dataset = dataset.cache()

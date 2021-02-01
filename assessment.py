@@ -44,15 +44,31 @@ def _errors(cm, classes, axis):
     incorrect = tf.reduce_sum(incorrect, axis, keepdims=True)
 
     errors = tf.squeeze(incorrect / class_counts)
-    errors = list(errors.numpy())
-
-    return dict(zip(classes, errors))
+    return errors
+    # errors = list(errors.numpy())
+    # return dict(zip(classes, errors))
 
 def errors_of_omission(cm, classes):
     return _errors(cm, classes, 0)
 
-def error_of_comission(cm, classes):
+def errors_of_comission(cm, classes):
     return _errors(cm, classes, 1)
+
+def confusion_matrix_with_errors(model, dataset, classes):
+    cm = confusion_matrix(model, dataset, len(classes)) # needs to be transposed
+    eoo = errors_of_omission(cm, classes) # goes on bottom
+    eoc = errors_of_comission(cm, classes) # goes on right with NaN appended
+
+    cm = tf.transpose(cm)
+
+    cm_eoo = tf.stack([cm, eoo])
+    eoc_nan = tf.stack([eoc, np.NaN])
+
+    output = tf.stack([cm_eoo, eoc_nan], axis=1)
+
+    return output
+
+
 
 def acc(cm, classes):
     correct = cm * tf.eye(classes, classes)
@@ -98,7 +114,6 @@ def reference_accuracy(model, dataset, num_classes):
         matrix += tf.math.confusion_matrix(references, predictions, num_classes)
     return matrix
 
-
 def dated_burn_accuracy(model, dataset, num_classes, scale):
     """
     Dataset is expected to return tuples of image, references points
@@ -113,7 +128,8 @@ def dated_burn_accuracy(model, dataset, num_classes, scale):
         ) from E
     scale_factor = 1 if scale == 'days' else 30 if scale == 'months' else 365
     output = {}
-    for images, references, burn_ages in dataset:
+    for images, references in dataset:
+        references, burn_ages = references[:, :, :, 0], references[:, :, :, 1]
         if model is not None:
             predictions = tf.argmax(model(images, training=False), -1)
         else:
