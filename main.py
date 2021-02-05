@@ -169,7 +169,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ============================================================
     # BUILD/LOAD THE MODEL
     # ============================================================
-    model_path = os.path.join(model_folder + f"{model_number:05d}/")
+    model_path = os.path.join(model_folder, f"{model_number:05d}/")
     model = Model.build_unet_model(
         input_shape=(*shape, channels), classes=classes
     )
@@ -248,7 +248,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         ee.Authenticate()
         ee.Initialize()
 
-        mixer_files = glob.glob(os.path.join(data_folder + '*.json'))
+        mixer_files = glob.glob(os.path.join(data_folder,  '*.json'))
         upload_assets = []
         for m in mixer_files:
             mixer = json.load(open(m))
