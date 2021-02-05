@@ -244,8 +244,8 @@ def accuracy_assessment(matrix, labels):
     df.index = labels
 
     if 'None' in labels:
-        df.drop('None')
-        df.drop('None', axis=1)
+        df = df.drop('None')
+        df = df.drop('None', axis=1)
         labels.remove('None')
 
     col_total = df.sum()
