@@ -166,6 +166,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         model_parameters['Model'] = model_number
         model_parameters['Datetime'] = pd.Timestamp(datetime.now())
 
+    # update metadata file and write out
+    try:
+        metadata.loc[model_number] = model_parameters
+    except KeyError:
+        metadata.append(model_parameters, ignore_index=True)
+
     # ============================================================
     # BUILD/LOAD THE MODEL
     # ============================================================
