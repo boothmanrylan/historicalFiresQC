@@ -235,14 +235,14 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels,
                hue_order=hue_order, height=4, aspect=1.75)
 
 def accuracy_assessment(matrix, labels):
+    if 'None' in labels:
+        labels.remove('None')
+        data.pop('None')
+
     data = {
         label: list(matrix[i].numpy().astype(int))
         for i, label in enumerate(labels)
     }
-
-    if 'None' in labels:
-        labels.remove('None')
-        data.pop('None')
 
     df = pd.DataFrame.from_dict(data)
     df.index = labels
