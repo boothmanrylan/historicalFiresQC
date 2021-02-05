@@ -114,6 +114,25 @@ def reference_accuracy(model, dataset, num_classes):
         matrix += tf.math.confusion_matrix(references, predictions, num_classes)
     return matrix
 
+def burn_age_reference_accuracy(model, dataset, inverse_burn_age_function,
+                                max_burn_age):
+    matrix = np.zeros((2, 2))
+    for images, references in dataset:
+        predictions = model(images, training=False)
+
+        # convert burn age prediction into binary burn vs not burn class
+        predictions = inverse_burn_age_function(predictions)
+        predictions = tf.where(predictions < max_burn_age, 1, 0)
+
+        # drop all negative points in references as they are not labelled
+        mask = tf.reshape(tf.where(reference >= 0), [-1])
+
+        predictions = tf.gather(tf.reshape(predictions, [-1]), mask)
+        references = tf.gather(tf.reshape(references, [-1]), mask)
+
+        matrix += tf.math.confusion_matrix(references, predictions, 2)
+    return matrix
+
 def dated_burn_accuracy(model, dataset, num_classes, scale):
     """
     Dataset is expected to return tuples of image, references points
@@ -190,7 +209,7 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels,
         assert scale in ['days', 'months', 'years']
     except AssertionError as E:
         raise ValueError(
-            f'scale must be one of days, months, or years got {scale}'
+            f'scale must be one of days, months, or years. Got {scale}'
         ) from E
     num_classes = len(class_labels)
     results = dated_burn_accuracy(model, dataset, num_classes, scale)
@@ -214,3 +233,56 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels,
     sns.lmplot(x=age_label, y='% Burns Predicted',
                hue='Predicted Class', data=df, palette=palette,
                hue_order=hue_order, height=4, aspect=1.75)
+
+def accuracy_assessment(confusion_matrix, labels):
+    data = {
+        label: list(confusion_matrix[i].numpy().astype(int))
+        for i, label in enumerate(labels)
+    }
+
+    if 'None' in labels:
+        labels.remove('None')
+        data.pop('None')
+
+    df = pd.DataFrame.from_dict(data)
+    df.index = labels
+
+    col_total = df.sum()
+    row_total = df.sum(1)
+
+    eye = pd.DataFrame(np.eye(len(labels)))
+    eye.index = df.index
+    eye.columns = df.columns
+
+    eye *= df
+
+    errors_of_omission = (col_total - eye.sum()) / col_total
+    errors_of_commission = (row_total - eye.sum(1)) / row_total
+
+    producers_accuracy = eye.sum() / col_total
+    users_accuracy = eye.sum(1) / row_total
+
+    df['Total'] = row_total
+    df = df.append(col_total.rename('Total'))
+
+    df['Erros of Commission'] = errors_of_commission
+    df = df.append(errors_of_omission.rename('Errors of Omission'))
+
+    df['User\'s Accuracy'] = users_accuracy
+    df = df.append(producers_accuracy.rename('Producer\'s Accuracy'))
+
+    df = df.round(decimals=4)
+
+    return df
+
+def burn_age_accuracy_assessment(model, dataset, inverse_burn_age_function, max_burn_age):
+    confusion_matrix = burn_age_reference_accuracy(
+        model, dataset, inverse_burn_age_function, max_burn_age
+    )
+    return accuracy_assessment(confusion_matrix, ['Not Burnt', 'Burnt'])
+
+def classification_accuracy_assessment(model, dataset, labels):
+    confusion_matrix = reference_accuracy(model, dataset, len(labels))
+    return accuracy_assessment(confusion_matrix, labels)
+
+
