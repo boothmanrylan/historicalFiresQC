@@ -125,7 +125,7 @@ def burn_age_reference_accuracy(model, dataset, inverse_burn_age_function,
         predictions = tf.where(predictions < max_burn_age, 1, 0)
 
         # drop all negative points in references as they are not labelled
-        mask = tf.reshape(tf.where(reference >= 0), [-1])
+        mask = tf.reshape(tf.where(references >= 0), [-1])
 
         predictions = tf.gather(tf.reshape(predictions, [-1]), mask)
         references = tf.gather(tf.reshape(references, [-1]), mask)
@@ -234,9 +234,9 @@ def plot_burn_accuracy_by_burn_age(model, dataset, class_labels,
                hue='Predicted Class', data=df, palette=palette,
                hue_order=hue_order, height=4, aspect=1.75)
 
-def accuracy_assessment(confusion_matrix, labels):
+def accuracy_assessment(matrix, labels):
     data = {
-        label: list(confusion_matrix[i].numpy().astype(int))
+        label: list(matrix[i].numpy().astype(int))
         for i, label in enumerate(labels)
     }
 
@@ -256,8 +256,8 @@ def accuracy_assessment(confusion_matrix, labels):
 
     eye *= df
 
-    errors_of_omission = (col_total - eye.sum()) / col_total
-    errors_of_commission = (row_total - eye.sum(1)) / row_total
+    eoo = (col_total - eye.sum()) / col_total
+    eoc = (row_total - eye.sum(1)) / row_total
 
     producers_accuracy = eye.sum() / col_total
     users_accuracy = eye.sum(1) / row_total
@@ -265,8 +265,8 @@ def accuracy_assessment(confusion_matrix, labels):
     df['Total'] = row_total
     df = df.append(col_total.rename('Total'))
 
-    df['Erros of Commission'] = errors_of_commission
-    df = df.append(errors_of_omission.rename('Errors of Omission'))
+    df['Erros of Commission'] = eoc
+    df = df.append(eoo.rename('Errors of Omission'))
 
     df['User\'s Accuracy'] = users_accuracy
     df = df.append(producers_accuracy.rename('Producer\'s Accuracy'))
@@ -276,13 +276,11 @@ def accuracy_assessment(confusion_matrix, labels):
     return df
 
 def burn_age_accuracy_assessment(model, dataset, inverse_burn_age_function, max_burn_age):
-    confusion_matrix = burn_age_reference_accuracy(
+    matrix = burn_age_reference_accuracy(
         model, dataset, inverse_burn_age_function, max_burn_age
     )
-    return accuracy_assessment(confusion_matrix, ['Not Burnt', 'Burnt'])
+    return accuracy_assessment(matrix, ['Not Burnt', 'Burnt'])
 
 def classification_accuracy_assessment(model, dataset, labels):
-    confusion_matrix = reference_accuracy(model, dataset, len(labels))
-    return accuracy_assessment(confusion_matrix, labels)
-
-
+    matrix = reference_accuracy(model, dataset, len(labels))
+    return accuracy_assessment(matrix, labels)
