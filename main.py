@@ -113,7 +113,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
     ref_point_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
-        image_bands=image_bands, annotation_bands=['ref_points'],
+        image_bands=image_bands, annotation_bands=['reference_points'],
         combine=combine, batch_size=batch_size, filters=None, shuffle=False,
         repeat=False, prefetch=True, cache=True, burn_age_function=baf
     )
