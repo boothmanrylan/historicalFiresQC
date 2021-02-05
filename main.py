@@ -6,9 +6,9 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import ee
-import data as Data
-import model as Model
-import assessment as Assessment
+from . import data as Data
+from . import model as Model
+from . import assessment as Assessment
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          model_folder='historicalFiresModels', annotation_type='level_slice',
