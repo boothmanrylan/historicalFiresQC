@@ -185,7 +185,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         )
         callbacks = [checkpoint]
 
-        optimizer = tf.keras.optimizers.Adam(learing_rate=learning_rate)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
         if output == 'burn_age':
             base_loss_fn = tf.keras.losses.MAE
