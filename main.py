@@ -172,6 +172,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     except KeyError:
         metadata.append(model_parameters, ignore_index=True)
 
+    metadata.to_csv(metadatafile)
+
     # ============================================================
     # BUILD/LOAD THE MODEL
     # ============================================================
