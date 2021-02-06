@@ -266,7 +266,7 @@ def accuracy_assessment(matrix, labels):
     df['Total'] = row_total
     df = df.append(col_total.rename('Total'))
 
-    df['Erros of Commission'] = eoc
+    df['Errors of Commission'] = eoc
     df = df.append(eoo.rename('Errors of Omission'))
 
     df['User\'s Accuracy'] = users_accuracy
