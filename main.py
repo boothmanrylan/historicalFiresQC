@@ -156,17 +156,19 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     all_models = metadata[model_parameters.keys()]
     prev_models = all_models[(all_models.values == current_model.values).all(1)]
     if not prev_models.empty:
+        index = prev_model.index[0]
         model_number = prev_models.index[0]
-        model_parameters = metadata.to_dict('records')[model_number]
-        metadata = metadata.drop(axis=1, index=model_number)
+        model_parameters = metadata.to_dict('records')[index]
+        metadata = metadata.drop(index)
+        model_number = metadata['Model']
         if train_model and load_model:
             model_parameters['Epochs'] += epochs
     else:
         model_number = metadata.shape[0]
+        model_parameters['Model'] = model_number
         if train_model:
             model_parameters['Epochs'] = epochs
 
-    model_parameters['Model'] = model_number
     if train_model:
         model_parameters['Date'] = pd.to_datetime(datetime.now())
 
