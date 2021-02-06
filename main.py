@@ -140,39 +140,45 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Output': pretty(output),
         'Learning Rate': learning_rate,
         'Burn Age Function': pretty(burn_age_function),
-        'Epochs': epochs
     }
+
+    columns = ['Model', 'Date', 'Epochs'] + list(model_parameters.keys())
 
     current_model = pd.DataFrame(model_parameters, index=[0])
 
     # open the metadata file if it exists otherwise create a new one
     try:
-        metadata = pd.read_csv(metadatafile)
+        metadata = pd.read_csv(metadatafile, index_col=False)
     except FileNotFoundError:
-        metadata = pd.DataFrame(columns=model_parameters.keys())
+        metadata = pd.DataFrame(columns=columns)
 
     # check if a model with these same parameters has already been trained
     all_models = metadata[model_parameters.keys()]
     prev_models = all_models[(all_models.values == current_model.values).all(1)]
     if not prev_models.empty:
         model_number = prev_models.index[0]
-        model_parameters = all_models.loc[model_number].to_dict()
-        if train_model:
-            model_parameters['Datetime'] = pd.Timestamp(datetime.now())
-            if load_model:
-                model_parameters['Epochs'] += epochs
+        model_parameters = metadata.to_dict('records')[model_number]
+        metadata = metadata.drop(axis=1, index=model_number)
+        if train_model and load_model:
+            model_parameters['Epochs'] += epochs
     else:
         model_number = metadata.shape[0]
-        model_parameters['Model'] = model_number
-        model_parameters['Datetime'] = pd.Timestamp(datetime.now())
+        if train_model:
+            model_parameters['Epochs'] = epochs
+
+    model_parameters['Model'] = model_number
+    if train_model:
+        model_parameters['Datetime'] = pd.to_datetime(datetime.now())
+
+    model_parameters = pd.DataFrame(
+        model_parameters,
+        index=[model_number],
+        columns=columns
+    )
 
     # update metadata file and write out
-    try:
-        metadata.loc[model_number] = model_parameters
-    except KeyError:
-        metadata.append(model_parameters, ignore_index=True)
-
-    metadata.to_csv(metadatafile)
+    metadata = metadata.append(model_parameters)
+    metadata.to_csv(metadatafile, index=False)
 
     # ============================================================
     # BUILD/LOAD THE MODEL
