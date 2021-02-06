@@ -168,7 +168,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
     model_parameters['Model'] = model_number
     if train_model:
-        model_parameters['Datetime'] = pd.to_datetime(datetime.now())
+        model_parameters['Date'] = pd.to_datetime(datetime.now())
 
     model_parameters = pd.DataFrame(
         model_parameters,
