@@ -10,7 +10,7 @@ from . import data as Data
 from . import model as Model
 from . import assessment as Assessment
 
-pd.options.display.max_cols = 15
+pd.options.display.max_columns = 15
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          model_folder='historicalFiresModels', annotation_type='level_slice',
