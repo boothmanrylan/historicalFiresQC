@@ -198,6 +198,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
 
+    @tf.function
     def _parse(x):
         return parse(x, shape, image_bands, annotation_bands, extra_bands,
                      combine, burn_age_function)
