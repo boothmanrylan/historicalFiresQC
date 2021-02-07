@@ -197,13 +197,11 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
             raise ValueError(f'invalid annotation band name: {b}') from E
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
-
-    @tf.function
-    def _parse(x):
-        return parse(x, shape, image_bands, annotation_bands, extra_bands,
-                     combine, burn_age_function)
-
-    dataset = dataset.map(_parse, num_parallel_calls=AUTOTUNE)
+    dataset = dataset.map(
+        lambda x: parse(x, shape, image_bands, annotation_bands,
+                        extra_bands, combine, burn_age_function),
+        num_parallel_calls=AUTOTUNE
+    )
 
     if filters:
         dataset = dataset.filter(filter_blank).filter(filter_nan)
