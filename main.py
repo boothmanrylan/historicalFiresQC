@@ -208,10 +208,13 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
         if output == 'burn_age':
             base_loss_fn = tf.keras.losses.MAE
+            args = {}
         elif output == 'burn':
             base_loss_fn = tf.keras.losses.binary_crossentropy
+            args = {'from_logits': True}
         else:
             base_loss_fn = tf.keras.losses.sparse_categorical_crossentropy
+            args = {'from_logits': True}
 
         if loss_function == 'weighted':
             # TODO: allow weights to be passed by user
@@ -225,14 +228,14 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             loss_fn = Model.weighted_loss(
                 base_loss_fn,
                 weights,
-                from_logits=True
+                **args
             )
         elif loss_function == 'reference_point':
             # TODO: add ability to make this weighted or not
             # TODO: add ability to set alpha and beta here
-            loss_fn = Model.reference_point_loss(base_loss_fn)
+            loss_fn = Model.reference_point_loss(base_loss_fn, **args)
         else:
-            loss_fn = Model.basic_loss(base_loss_fn, from_logits=True)
+            loss_fn = Model.basic_loss(base_loss_fn, **args)
 
         metrics = ['accuracy']
 
