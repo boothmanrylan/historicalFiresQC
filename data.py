@@ -105,10 +105,10 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
             annotation = tf.where(annotation == original, change, annotation)
 
     if lslice_burn_age is not None:
-        annotation = tf.concat([annotation, lslice_burn_age], -1)
+        annotation = tf.concat([annotation, tf.squeeze(lslice_burn_age)], -1)
 
     if bbox_burn_age is not None:
-        annotation = tf.concat([annotation, bbox_burn_age], -1)
+        annotation = tf.concat([annotation, tf.squeeze(bbox_burn_age)], -1)
 
     date_diff = _add_separately(
         'dateDiff', image_bands, parsed, shape, lambda x: x / 1071
@@ -199,7 +199,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
 
     def _parse(x):
-        return parse(x, shape, image_bandas, annotation_bands, extra_bands,
+        return parse(x, shape, image_bands, annotation_bands, extra_bands,
                      combine, burn_age_function)
 
     dataset = dataset.map(_parse, num_parallel_calls=AUTOTUNE)
