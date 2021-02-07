@@ -74,6 +74,13 @@ def _stack_bands(parsed_example, band_names, dtype, shape):
 @tf.function
 def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
           combine=None, burn_age_function=None):
+    # make copies of input lists to avoid tensorflow could not parse source
+    # code no matching AST error
+    image_bands = image_bands.copy()
+    annotation_bands = annotation_bands.copy()
+    if extra_bands is not None:
+        extra_bands = extra_bands.copy()
+
     feature_description = {
         k: tf.io.FixedLenFeature(shape, tf.float32) for k in all_bands
     }
