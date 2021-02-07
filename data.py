@@ -53,7 +53,6 @@ def inverse_sigmoid_burn_age(burn_age):
     return -2 * tf.math.log((2 / (burn_age + 1)) - 1)
 
 
-@tf.function
 def _add_separately(band_name, image_bands, parsed_example, shape, scale_fn):
     '''Helper function for parse.'''
     if band_name in image_bands:
@@ -63,7 +62,6 @@ def _add_separately(band_name, image_bands, parsed_example, shape, scale_fn):
     return band
 
 
-@tf.function
 def _stack_bands(parsed_example, band_names, dtype, shape):
     '''Helper function for parse.'''
     if band_names:
