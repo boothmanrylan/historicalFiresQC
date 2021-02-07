@@ -148,9 +148,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
     def pretty(obj):
         if isinstance(obj, str):
-            return obj.replace('_', ' ').title()
+            output = obj.replace('_', ' ').title()
         else:
-            return obj
+            output = obj
+        return output
 
     model_parameters = {
         'Annotation Type': pretty(annotation_type),
