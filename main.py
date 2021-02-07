@@ -114,7 +114,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     )
 
     dummy_dataset = list(train_dataset.take(1).as_numpy_iterator())[0]
-    print(f'Train data has shape: {dummy_dataset.shape}')
+    print(f'Train input data has shape: {dummy_dataset[0].shape}')
+    print(f'Train output data has shape: {dummy_dataset[1].shape}')
 
     val_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
@@ -125,7 +126,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     )
 
     dummy_dataset = list(val_dataset.take(1).as_numpy_iterator())[0]
-    print(f'Validation data has shape: {dummy_dataset.shape}')
+    print(f'Validation input data has shape: {dummy_dataset[0].shape}')
+    print(f'Validation output data has shape: {dummy_dataset[1].shape}')
 
     ref_point_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
