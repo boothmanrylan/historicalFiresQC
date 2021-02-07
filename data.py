@@ -91,7 +91,12 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
         'bboxBurnAge', annotation_bands, parsed, shape, burn_age_function
     )
 
-    annotation = _stack_bands(parsed, annotation_bands, tf.int64, shape)
+    if lslice_burn_age is not None or bbox_burn_age is not None:
+        annotation_dtype = tf.float32
+    else:
+        annotation_dtype = tf.int64
+
+    annotation = _stack_bands(parsed, annotation_bands, annotation_dtype, shape)
 
     if combine is not None:
         for original, change in combine:
