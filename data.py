@@ -109,6 +109,8 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
 
     annotation = _stack_bands(parsed, annotation_bands, annotation_dtype, shape)
 
+    print(annotation.shape)
+
     if combine is not None:
         for original, change in combine:
             original = tf.cast(original, annotation.dtype)
@@ -120,6 +122,8 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
 
     if bbox_burn_age is not None:
         annotation = tf.concat([annotation, tf.squeeze(bbox_burn_age)], -1)
+
+    print(annotation.shape)
 
     date_diff = _add_separately(
         'dateDiff', image_bands, parsed, shape, lambda x: x / 1071
