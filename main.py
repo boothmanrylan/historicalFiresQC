@@ -272,7 +272,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         else:
             loss_fn = Model.basic_loss(base_loss_fn, **args)
 
-        metrics = ['accuracy']
+        if output == 'burn_age':
+            metrics = ['mae', 'mse']
+        else:
+            metrics = ['accuracy']
 
         model.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
 
