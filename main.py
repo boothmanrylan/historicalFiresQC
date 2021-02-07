@@ -40,6 +40,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ==========================================================
     # SET THE BANDS TO USE AS OUTPUT FOR THE MODEL
     # ==========================================================
+    print('Creating datasets...')
+
     classes = 5 # none, cloud, water, land, burn
     labels = ['None', 'Cloud', 'Water', 'Land', 'Burn']
     combine = [(5, 4)] # merge new burns and old burn into one class
@@ -64,6 +66,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         # convert all non burn classes to 0 and all burn classes to 1
         combine = [(1, 0), (2, 0), (3, 0), (4, 1), (5, 1)]
 
+    print(f'Using {annotation_bands} as ground truth.')
+    print(f'Model will have {classes} classes.')
+
     # ==========================================================
     # SET THE BANDS TO USE AS INPUT TO THE MODEL
     # ==========================================================
@@ -78,6 +83,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         else:
             image_bands.append('prevBBoxBurnAge')
     channels = len(image_bands)
+
+    print(f'Using {image_bands} as input to model.')
+    print(f'Model will have {channels} channels.')
 
     # ===========================================================
     # BUILD THE DATASETS
@@ -126,9 +134,13 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     #     burn_age_function=baf
     # )
 
+    print('Done creating datasets.')
+
     # =============================================================
     # SET UP METADATA TO BE LOGGED TODO: replace this with MLMD
     # =============================================================
+    print('Setting up metadata to be logged...')
+
     def pretty(obj):
         if isinstance(obj, str):
             return obj.replace('_', ' ').title()
@@ -161,12 +173,14 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     if not prev_models.empty:
         index = prev_models.index[0]
         model_number = prev_models.index[0]
+        print(f'Found model {model_number:04d} with matching parameters.')
         model_parameters = metadata.to_dict('records')[index]
         metadata = metadata.drop(index)
         model_number = model_parameters['Model']
         if train_model and load_model:
             model_parameters['Epochs'] += epochs
     else:
+        print('No previous model with the same parameters was found.')
         model_number = metadata.shape[0]
         model_parameters['Model'] = model_number
         if train_model:
@@ -181,23 +195,32 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         columns=columns
     )
 
+    print(f'Model parameters: {model_parameters}')
+
     # update metadata file and write out
     metadata = metadata.append(model_parameters)
     metadata.to_csv(metadatafile, index=False)
 
+    print('Done saving metadata.')
+
     # ============================================================
     # BUILD/LOAD THE MODEL
     # ============================================================
+    print('Building model...')
+
     model_path = os.path.join(model_folder, f"{model_number:04d}/")
     model = Model.build_unet_model(
         input_shape=(*shape, channels), classes=classes
     )
 
     if load_model:
+        print(f'Loading model weights from {model_path}...')
         assert not prev_models.empty, "Cannot load weights, no model exists"
         model.load_weights(model_path)
+        print('Done loading model weights.')
 
     if train_model:
+        print('Training model...')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             filepath=model_path, save_weights_only=True,
             save_freq=steps_per_epoch
@@ -245,10 +268,14 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             train_dataset, epochs=epochs, verbose=1,
             steps_per_epoch=steps_per_epoch, callbacks=callbacks
         )
+        print('Done training model.')
+
+    print('Done building model.')
 
     # ================================================================
     # ASSESS THE MODEL
     # ================================================================
+    print('Assessing model performance...')
     if output == 'burn_age':
         acc_assessment = Assessment.burn_age_accuracy_assessment(
             model, ref_point_dataset, inverse_baf, 3650
@@ -259,14 +286,21 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         )
 
     # write accuracy assessment table to csv in model_path
-    acc_assessment.to_csv(os.path.join(model_path, 'assessment.csv'))
+    assessment_path = os.path.join(model_path, 'assessment.csv')
+
+    print(f'Saving model assessment to {assessment_path}.')
+
+    acc_assessment.to_csv(assessment_path)
 
     # TODO: make accuracy by burn age plots
+
+    print('Done assessing model.')
 
     # =================================================================
     # UPLOAD PREDICTIONS TO EARTH ENGINE
     # =================================================================
     if upload:
+        print('Setting up assets to upload to earth engine...')
         ee.Authenticate()
         ee.Initialize()
 
@@ -323,7 +357,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
             asset_id = os.path.join('users', ee_user, ee_folder, model_number)
             upload_assets.append((asset_id, output_file, m))
+        print('Done setting up earth engine assets.')
     else:
         upload_assets = None
+
+    print('Main completed.')
 
     return train_dataset, val_dataset, model, acc_assessment, upload_assets
