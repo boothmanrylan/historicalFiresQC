@@ -89,13 +89,13 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
 
     # burn age bands must be scaled, but regular annotation bands should not be
     # scaled therefore add them each separately to the annotation
-    lslice_burn_age = tf.squeeze(_add_separately(
+    lslice_burn_age = _add_separately(
         'lsliceBurnAge', annotation_bands, parsed, shape, burn_age_function
-    ))
+    )
 
-    bbox_burn_age = tf.squeeze(_add_separately(
+    bbox_burn_age = _add_separately(
         'bboxBurnAge', annotation_bands, parsed, shape, burn_age_function
-    ))
+    )
 
     # ensure burn age bands are not added to the annotation twice
     new_annotation_bands = annotation_bands.copy()
@@ -120,13 +120,13 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
         if annotation is not None:
             annotation = tf.concat([annotation, lslice_burn_age], -1)
         else:
-            annotation = lslice_burn_age
+            annotation = tf.squeeze(lslice_burn_age)
 
     if bbox_burn_age is not None:
         if annotation is not None:
             annotation = tf.concat([annotation, bbox_burn_age], -1)
         else:
-            annotation = bbox_burn_age
+            annotation = tf.squeeze(bbox_burn_age)
 
     # dateDiff and burn age bands must be scaled differently than MSS bands
     # therefore add them each separately to the image
