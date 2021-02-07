@@ -10,6 +10,8 @@ from . import data as Data
 from . import model as Model
 from . import assessment as Assessment
 
+pd.options.display.max_cols = 15
+
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          model_folder='historicalFiresModels', annotation_type='level_slice',
          output='all', shape=(256, 256), batch_size=100, stack_image=False,
@@ -111,6 +113,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         burn_age_function=baf
     )
 
+    dummy_dataset = list(train_dataset.take(1).as_numpy_iterator())[0]
+    print(f'Train data has shape: {dummy_dataset.shape}')
+
     val_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=annotation_bands,
@@ -118,6 +123,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         shuffle=False, repeat=False, prefetch=True, cache=True,
         burn_age_function=baf
     )
+
+    dummy_dataset = list(val_dataset.take(1).as_numpy_iterator())[0]
+    print(f'Validation data has shape: {dummy_dataset.shape}')
 
     ref_point_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
@@ -134,7 +142,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     #     burn_age_function=baf
     # )
 
-    print('Done creating datasets.')
+    print('Done creating datasets.\n')
 
     # =============================================================
     # SET UP METADATA TO BE LOGGED TODO: replace this with MLMD
@@ -195,13 +203,13 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         columns=columns
     )
 
-    print(f'Model parameters: {model_parameters}')
+    print(f'Model parameters:\n{model_parameters}')
 
     # update metadata file and write out
     metadata = metadata.append(model_parameters)
     metadata.to_csv(metadatafile, index=False)
 
-    print('Done saving metadata.')
+    print('Done saving metadata.\n')
 
     # ============================================================
     # BUILD/LOAD THE MODEL
@@ -213,11 +221,15 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         input_shape=(*shape, channels), classes=classes
     )
 
+    dummy_dataset = np.random.normal(0, 1, (1, *shape, channels))
+    dummy_output = model(dummy_dataset, training=False)
+    print(f'Model has output shape: {dummy_output.shape}')
+
     if load_model:
         print(f'Loading model weights from {model_path}...')
         assert not prev_models.empty, "Cannot load weights, no model exists"
         model.load_weights(model_path)
-        print('Done loading model weights.')
+        print('Done loading model weights.\n')
 
     if train_model:
         print('Training model...')
@@ -268,9 +280,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             train_dataset, epochs=epochs, verbose=1,
             steps_per_epoch=steps_per_epoch, callbacks=callbacks
         )
-        print('Done training model.')
+        print('Done training model.\n')
 
-    print('Done building model.')
+    print('Done building model.\n')
 
     # ================================================================
     # ASSESS THE MODEL
@@ -294,7 +306,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
     # TODO: make accuracy by burn age plots
 
-    print('Done assessing model.')
+    print('Done assessing model.\n')
 
     # =================================================================
     # UPLOAD PREDICTIONS TO EARTH ENGINE
@@ -357,7 +369,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
             asset_id = os.path.join('users', ee_user, ee_folder, model_number)
             upload_assets.append((asset_id, output_file, m))
-        print('Done setting up earth engine assets.')
+        print('Done setting up earth engine assets.\n')
     else:
         upload_assets = None
 
