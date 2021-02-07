@@ -68,7 +68,7 @@ def _stack_bands(parsed_example, band_names, dtype, shape):
         bands = [tf.cast(parsed_example[b], dtype) for b in band_names]
         output = tf.squeeze(tf.stack(bands, axis=-1))
     else:
-        output = tf.experimental.numpy.empty(shape, dtype=dtype)
+        output = None
     return output
 
 
@@ -89,13 +89,13 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
 
     # burn age bands must be scaled, but regular annotation bands should not be
     # scaled therefore add them each separately to the annotation
-    lslice_burn_age = _add_separately(
+    lslice_burn_age = tf.squeeze(_add_separately(
         'lsliceBurnAge', annotation_bands, parsed, shape, burn_age_function
-    )
+    ))
 
-    bbox_burn_age = _add_separately(
+    bbox_burn_age = tf.squeeze(_add_separately(
         'bboxBurnAge', annotation_bands, parsed, shape, burn_age_function
-    )
+    ))
 
     # ensure burn age bands are not added to the annotation twice
     new_annotation_bands = annotation_bands.copy()
@@ -110,10 +110,6 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
 
     annotation = _stack_bands(parsed, new_annotation_bands, annot_dtype, shape)
 
-    print(f'burn age: {bbox_burn_age.shape}')
-    print(new_annotation_bands)
-    print(annotation.shape)
-
     if combine is not None:
         for original, change in combine:
             original = tf.cast(original, annotation.dtype)
@@ -121,12 +117,16 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
             annotation = tf.where(annotation == original, change, annotation)
 
     if lslice_burn_age is not None:
-        annotation = tf.concat([annotation, tf.squeeze(lslice_burn_age)], -1)
+        if annotation is not None:
+            annotation = tf.concat([annotation, lslice_burn_age], -1)
+        else:
+            annotation = lslice_burn_age
 
     if bbox_burn_age is not None:
-        annotation = tf.concat([annotation, tf.squeeze(bbox_burn_age)], -1)
-
-    print(annotation.shape)
+        if annotation is not None:
+            annotation = tf.concat([annotation, bbox_burn_age], -1)
+        else:
+            annotation = bbox_burn_age
 
     # dateDiff and burn age bands must be scaled differently than MSS bands
     # therefore add them each separately to the image
@@ -152,13 +152,22 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
     image /= 255.0 # MSS data is unsigned 8 bit integer therefore 255 is max
 
     if date_diff is not None:
-        image = tf.concat([image, date_diff], -1)
+        if image is not None:
+            image = tf.concat([image, date_diff], -1)
+        else:
+            image = tf.squeeze(date_diff)
 
     if prev_bbox_burn_age is not None:
-        image = tf.concat([image, prev_bbox_burn_age], -1)
+        if image is not None:
+            image = tf.concat([image, prev_bbox_burn_age], -1)
+        else:
+            image = tf.squeeze(prev_bbox_burn_age)
 
     if prev_lslice_burn_age is not None:
-        image = tf.concat([image, prev_lslice_burn_age], -1)
+        if image is not None:
+            image = tf.concat([image, prev_lslice_burn_age], -1)
+        else:
+            image = tf.squeeze(prev_lslice_burn_age)
 
     if extra_bands is not None:
         extra = _stack_bands(parsed, extra_bands, tf.float32, shape)
