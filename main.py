@@ -69,7 +69,6 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         combine = [(1, 0), (2, 0), (3, 0), (4, 1), (5, 1)]
 
     print(f'Using {annotation_bands} as ground truth.')
-    print(f'Model will have {classes} classes.')
 
     # ==========================================================
     # SET THE BANDS TO USE AS INPUT TO THE MODEL
@@ -87,7 +86,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     channels = len(image_bands)
 
     print(f'Using {image_bands} as input to model.')
-    print(f'Model will have {channels} channels.')
+    print(f'Input has {channels} channels. Output has {classes} classes.')
 
     # ===========================================================
     # BUILD THE DATASETS
@@ -113,9 +112,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         burn_age_function=baf
     )
 
-    dummy_dataset = list(train_dataset.take(1).as_numpy_iterator())[0]
-    print(f'Train input data has shape: {dummy_dataset[0].shape}')
-    print(f'Train output data has shape: {dummy_dataset[1].shape}')
+    for x, y in train_dataset.take(1):
+        print(f'Input data has shape: {x.shape}')
+        print(f'Ground truth data has shape: {y.shape}')
 
     val_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
@@ -124,10 +123,6 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         shuffle=False, repeat=False, prefetch=True, cache=True,
         burn_age_function=baf
     )
-
-    dummy_dataset = list(val_dataset.take(1).as_numpy_iterator())[0]
-    print(f'Validation input data has shape: {dummy_dataset[0].shape}')
-    print(f'Validation output data has shape: {dummy_dataset[1].shape}')
 
     ref_point_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
@@ -232,6 +227,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         assert not prev_models.empty, "Cannot load weights, no model exists"
         model.load_weights(model_path)
         print('Done loading model weights.\n')
+    else:
+        print('Not loading model weights.')
 
     if train_model:
         print('Training model...')
