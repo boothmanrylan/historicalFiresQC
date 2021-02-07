@@ -203,6 +203,11 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         except AssertionError as E:
             raise ValueError(f'invalid annotation band name: {b}') from E
 
+    # set combine to None if predicting burn age
+    if ('lsliceBurnAge' in annotation_bands or
+        'bboxBurnAge' in annotation_bands):
+        combine=None
+
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
         lambda x: parse(x, shape, image_bands, annotation_bands,
