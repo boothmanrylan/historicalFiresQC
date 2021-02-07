@@ -53,16 +53,17 @@ def inverse_sigmoid_burn_age(burn_age):
     return -2 * tf.math.log((2 / (burn_age + 1)) - 1)
 
 
+@tf.function
 def _add_separately(band_name, image_bands, parsed_example, shape, scale_fn):
     '''Helper function for parse.'''
     if band_name in image_bands:
-        image_bands.remove(band_name)
         band = scale_fn(tf.reshape(parsed_example.pop(band_name), (*shape, 1)))
     else:
         band = None
     return band
 
 
+@tf.function
 def _stack_bands(parsed_example, band_names, dtype, shape):
     '''Helper function for parse.'''
     if band_names:
@@ -76,10 +77,6 @@ def _stack_bands(parsed_example, band_names, dtype, shape):
 @tf.function
 def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
           combine=None, burn_age_function=None):
-    # make copies of input lists to avoid tensorflow could not parse source
-    # code no matching AST error
-    image_bands = image_bands.copy()
-    annotation_bands = annotation_bands.copy()
     if extra_bands is not None:
         extra_bands = extra_bands.copy()
 
@@ -92,6 +89,8 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
 
     parsed = tf.io.parse_single_example(example, feature_description)
 
+    # burn age bands must be scaled, but regular annotation bands should not be
+    # scaled therefore add them each separately to the annotation
     lslice_burn_age = _add_separately(
         'lsliceBurnAge', annotation_bands, parsed, shape, burn_age_function
     )
@@ -100,12 +99,18 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
         'bboxBurnAge', annotation_bands, parsed, shape, burn_age_function
     )
 
-    if lslice_burn_age is not None or bbox_burn_age is not None:
-        annotation_dtype = tf.float32
-    else:
-        annotation_dtype = tf.int64
+    # ensure burn age bands are not added to the annotation twice
+    new_annotation_bands = annotation_bands.copy()
+    for band in ['lsliceBurnAge', 'bboxBurnAge']:
+        if band in annotation_bands:
+            new_annotation_bands.remove(band)
 
-    annotation = _stack_bands(parsed, annotation_bands, annotation_dtype, shape)
+    if lslice_burn_age is not None or bbox_burn_age is not None:
+        annot_dtype = tf.float32
+    else:
+        annot_dtype = tf.int64
+
+    annotation = _stack_bands(parsed, new_annotation_bands, annot_dtype, shape)
 
     print(annotation.shape)
 
@@ -123,6 +128,8 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
 
     print(annotation.shape)
 
+    # dateDiff and burn age bands must be scaled differently than MSS bands
+    # therefore add them each separately to the image
     date_diff = _add_separately(
         'dateDiff', image_bands, parsed, shape, lambda x: x / 1071
     )
@@ -135,7 +142,13 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
         'prevLSliceBurnAge', image_bands, parsed, shape, burn_age_function
     )
 
-    image = _stack_bands(parsed, image_bands, tf.float32, shape)
+    # ensure the bands added separately are not added twice
+    new_image_bands = image_bands.copy()
+    for band in ['dateDiff', 'prevBBoxBurnAge', 'prevLSliceBurnAge']:
+        if band in image_bands:
+            new_image_bands.remove(band)
+
+    image = _stack_bands(parsed, new_image_bands, tf.float32, shape)
     image /= 255.0 # MSS data is unsigned 8 bit integer therefore 255 is max
 
     if date_diff is not None:
