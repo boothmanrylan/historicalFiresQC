@@ -110,6 +110,8 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
 
     annotation = _stack_bands(parsed, new_annotation_bands, annot_dtype, shape)
 
+    print(f'burn age: {bbox_burn_age.shape}')
+    print(new_annotation_bands)
     print(annotation.shape)
 
     if combine is not None:
