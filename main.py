@@ -179,7 +179,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     if not prev_models.empty:
         index = prev_models.index[0]
         model_number = prev_models.index[0]
-        print(f'Found model {model_number:04d} with matching parameters.')
+        print(f'Found model {model_number:05d} with matching parameters.')
         model_parameters = metadata.to_dict('records')[index]
         metadata = metadata.drop(index)
         model_number = model_parameters['Model']
@@ -214,7 +214,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ============================================================
     print('Building model...')
 
-    model_path = os.path.join(model_folder, f"{model_number:04d}/")
+    model_path = os.path.join(model_folder, f"{model_number:05d}/")
     model = Model.build_unet_model(
         input_shape=(*shape, channels), classes=classes
     )
