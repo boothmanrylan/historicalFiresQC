@@ -131,6 +131,8 @@ def burn_age_reference_accuracy(model, dataset, inverse_burn_age_function,
         references = tf.gather(tf.reshape(references, [-1]), mask)
 
         print(tf.math.reduce_min(references))
+        print(tf.math.reduce_max(references))
+        print(tf.math.reduce_mean(references))
 
         matrix += tf.math.confusion_matrix(references, predictions, 2)
     return matrix
