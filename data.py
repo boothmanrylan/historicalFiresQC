@@ -11,8 +11,7 @@ all_bands = [
 
 
 def filter_blank(image, annotation, *annotations):
-    return not (tf.reduce_min(annotation) == 0 and
-                tf.reduce_max(annotation) == 0)
+    return not tf.reduce_max(image) == 0
 
 
 def filter_no_x(x, image, annotation, *annotations):
@@ -28,6 +27,7 @@ def filter_no_burnt(image, annotation, *annotations):
 def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
+# TODO NOW: scale log and sigmoid burn age functions to run between 0 and 1
 
 def scale_burn_age(burn_age):
     return burn_age / (3650)
