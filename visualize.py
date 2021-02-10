@@ -48,14 +48,14 @@ def calculate_vmin_vmax(image, alpha=0.9):
     vmax = mean + (alpha / 2 * std)
     return vmin, vmax
 
-def visualize(dataset, model=None, num=20, stacked_image=False):
+def visualize(dataset, model=None, num=20, stacked_image=False, regression=True):
     for images, annotations in dataset.take(num):
         num_figs = 1 + annotations.shape[-1] if annotations.ndim == 4 else 2
         if model is not None:
             num_figs += 1
         if stacked_image:
             num_figs += 1
-        f, ax = plt.subplots(1, num_figs, figsize=(15, 30))
+        _, ax = plt.subplots(1, num_figs, figsize=(15, 30))
 
         image = tf.squeeze(images[0]).numpy()
         fcis = false_colour_image(image, stacked_image)
@@ -71,17 +71,19 @@ def visualize(dataset, model=None, num=20, stacked_image=False):
             ax[1].imshow(fcis[1], vmin=vmin, vmax=vmax)
             ax[1].set_title('Previous Patch')
 
+        vmax = len(colours) if not regression else 3650
+
         offset = 2 if stacked_image else 1
         if annotations.ndim == 4:
             for i in range(annotations.shape[-1]):
                 annotation = tf.squeeze(annotations[0, :, :, i]).numpy()
-                ax[i + offset].imshow(annotation, vmin=0, vmax=len(colours),
+                ax[i + offset].imshow(annotation, vmin=0, vmax=vmax,
                                       cmap=cmap, interpolation='nearest',
                                       norm=norm)
                 ax[i + offset].set_title(f'Annotation {i + 1}')
         else:
             annotation = tf.squeeze(annotations[0]).numpy()
-            ax[offset].imshow(annotation, vmin=0, vmax=len(colours),
+            ax[offset].imshow(annotation, vmin=0, vmax=vmax,
                               cmap=cmap, interpolation='nearest',
                               norm=norm)
             ax[offset].set_title('Annotation')
@@ -90,7 +92,7 @@ def visualize(dataset, model=None, num=20, stacked_image=False):
             prediction = tf.argmax(
                 model(images, training=False)[0], -1
             ).numpy()
-            ax[num_figs - 1].imshow(prediction, vmin=0, vmax=len(colours),
+            ax[num_figs - 1].imshow(prediction, vmin=0, vmax=vmax,
                                     cmap=cmap, interpolation='nearest',
                                     norm=norm)
             ax[num_figs - 1].set_title('Model Prediction')
