@@ -181,8 +181,11 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         model_parameters = metadata.to_dict('records')[index]
         metadata = metadata.drop(index)
         model_number = model_parameters['Model']
-        if train_model and load_model:
-            model_parameters['Epochs'] += epochs
+        if train_model:
+            if load_model:
+                model_parameters['Epochs'] += epochs
+            else:
+                model_parameters['Epochs'] = epochs
     else:
         print('No previous model with the same parameters was found.')
         model_number = metadata.shape[0]
@@ -231,6 +234,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
     if train_model:
         print('Training model...')
+        print(f'Saving model weights to {model_path}.')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             filepath=model_path, save_weights_only=True,
             save_freq=steps_per_epoch
