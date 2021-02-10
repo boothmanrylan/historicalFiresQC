@@ -93,13 +93,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ===========================================================
     if burn_age_function == 'scale':
         baf = Data.scale_burn_age
-        inverse_baf = Data.inverse_scale_burn_age
     elif burn_age_function  == 'log':
         baf = Data.log_burn_age
-        inverse_baf = Data.inverse_log_burn_age
     elif burn_age_function == 'sigmoid':
         baf = Data.sigmoid_burn_age
-        inverse_baf = Data.inverse_sigmoid_burn_age
     else:
         raise ValueError(f'Bad burn age function {burn_age_function}')
 
@@ -295,7 +292,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     print('Assessing model performance...')
     if output == 'burn_age':
         acc_assessment = Assessment.burn_age_accuracy_assessment(
-            model, ref_point_dataset, inverse_baf, 3650
+            model, ref_point_dataset, baf(3650)
         )
     else:
         acc_assessment = Assessment.classification_accuracy_assessment(
