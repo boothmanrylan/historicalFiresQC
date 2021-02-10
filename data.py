@@ -27,8 +27,6 @@ def filter_no_burnt(image, annotation, *annotations):
 def filter_nan(image, annotation, *annotations):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
-# TODO NOW: scale log and sigmoid burn age functions to run between 0 and 1
-
 def scale_burn_age(burn_age):
     return burn_age / (3650)
 
@@ -38,19 +36,19 @@ def inverse_scale_burn_age(burn_age):
 
 
 def log_burn_age(burn_age):
-    return tf.math.log(burn_age + 1)
+    return tf.math.log((burn_age / 365) + 1)
 
 
 def inverse_log_burn_age(burn_age):
-    return tf.math.exp(burn_age) - 1
+    return 365(tf.math.exp(burn_age) - 1)
 
 
 def sigmoid_burn_age(burn_age):
-    return 2 * tf.math.sigmoid(burn_age / 2) - 1
+    return 2 * tf.math.sigmoid(burn_age / 730) - 1
 
 
 def inverse_sigmoid_burn_age(burn_age):
-    return -2 * tf.math.log((2 / (burn_age + 1)) - 1)
+    return -730 * tf.math.log((2 / (burn_age + 1)) - 1)
 
 
 def _add_separately(band_name, image_bands, parsed_example, shape, scale_fn):
