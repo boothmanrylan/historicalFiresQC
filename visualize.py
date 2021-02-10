@@ -48,7 +48,7 @@ def calculate_vmin_vmax(image, alpha=0.9):
     vmax = mean + (alpha / 2 * std)
     return vmin, vmax
 
-def visualize(dataset, model=None, num=20, stacked_image=False, regression=True):
+def visualize(dataset, model=None, num=20, stacked_image=False, max_annot=None):
     for images, annotations in dataset.take(num):
         num_figs = 1 + annotations.shape[-1] if annotations.ndim == 4 else 2
         if model is not None:
@@ -71,7 +71,7 @@ def visualize(dataset, model=None, num=20, stacked_image=False, regression=True)
             ax[1].imshow(fcis[1], vmin=vmin, vmax=vmax)
             ax[1].set_title('Previous Patch')
 
-        vmax = len(colours) if not regression else 3650
+        vmax = len(colours) if max_annot is None else max_annot
 
         offset = 2 if stacked_image else 1
         if annotations.ndim == 4:

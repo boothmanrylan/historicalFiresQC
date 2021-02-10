@@ -9,6 +9,7 @@ import ee
 from . import data as Data
 from . import model as Model
 from . import assessment as Assessment
+from . import visualize as Visualize
 
 pd.options.display.max_columns = 15
 
@@ -112,9 +113,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         burn_age_function=baf
     )
 
-    for x, y in train_dataset.take(1):
-        print(f'Input data has shape: {x.shape}')
-        print(f'Ground truth data has shape: {y.shape}')
+    max_annot = 3650 if output == 'burn_age' else None
+    print('Visualizing the train dataset...')
+    Visualize.visualize(train_dataset, num=5, max_annot=max_annot)
+    print('Done visualizing the train dataset.\n')
 
     val_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
@@ -124,12 +126,21 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         burn_age_function=baf
     )
 
+    print('Visualizing the val dataset...')
+    Visualize.visualize(val_dataset, num=5, max_annot=max_annot)
+    print('Done visualizing the val dataset.\n')
+
     ref_point_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=['referencePoints'],
         combine=combine, batch_size=batch_size, filters=None, shuffle=False,
         repeat=False, prefetch=True, cache=True, burn_age_function=baf
     )
+
+    ref_annot_max = 1 if output == 'burn_age' else None
+    print('Visualizing the reference point dataset...')
+    Visualize.visualize(ref_point_dataset, num=5, max_annot=ref_annot_max)
+    print('Done visualizing the reference point dataset.\n')
 
     # test_dataset = Data.get_dataset(
     #     patterns=test_pattern, shape=shape,
