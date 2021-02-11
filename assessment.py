@@ -106,7 +106,7 @@ def reference_accuracy(model, dataset, num_classes):
         predictions = tf.where(predictions > 4, 4, predictions)
 
         # drop all negative points in reference as they are not labelled
-        mask = tf.reshape(tf.where(references >= 0), [-1])
+        mask = tf.reshape(tf.where(references > 0), [-1])
         predictions = tf.gather(predictions, mask)
         references = tf.gather(references, mask)
 
@@ -128,7 +128,6 @@ def burn_age_reference_accuracy(model, dataset, max_burn_age):
 
         # drop all negative points in references as they are not labelled
         mask = tf.reshape(tf.where(references > 0), [-1])
-        print(mask.shape)
         predictions = tf.gather(predictions, mask)
         references = tf.gather(references, mask)
 
