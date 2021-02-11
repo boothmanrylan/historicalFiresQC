@@ -27,6 +27,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     assert annotation_type in ['level_slice', 'bounding_box'], bad_arg
     assert output in ['all', 'burn_age', 'burn'], bad_arg
     assert loss_function in ['basic', 'weighted', 'reference_point'], bad_arg
+    assert burn_age_function in ['scale', 'log', 'sigmoid', None], bad_arg
 
     # =========================================================
     # SET THE PATHS TO THE DATA AND MODELS
@@ -91,7 +92,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ===========================================================
     # BUILD THE DATASETS
     # ===========================================================
-    if burn_age_function == 'scale':
+    if burn_age_function is None:
+        baf = lambda x: x
+    elif burn_age_function == 'scale':
         baf = Data.scale_burn_age
     elif burn_age_function  == 'log':
         baf = Data.log_burn_age
@@ -272,7 +275,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             loss_fn = Model.basic_loss(base_loss_fn, **args)
 
         if output == 'burn_age':
-            metrics = ['mae', 'mse']
+            metrics = ['mse']
         else:
             metrics = ['accuracy']
 
