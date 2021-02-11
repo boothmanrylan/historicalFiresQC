@@ -110,7 +110,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         patterns=train_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=annotation_bands,
         combine=combine,
-        batch_size=batch_size, filters=True, shuffle=True,
+        batch_size=batch_size, filters=Data.filter_no_burnt, shuffle=True,
         repeat=True, prefetch=True, cache=True,
         burn_age_function=baf
     )
