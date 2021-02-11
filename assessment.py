@@ -113,15 +113,23 @@ def reference_accuracy(model, dataset, num_classes):
         matrix += tf.math.confusion_matrix(references, predictions, num_classes)
     return matrix
 
-def burn_age_reference_accuracy(model, dataset, max_burn_age):
+def burn_age_reference_accuracy(model, dataset, max_burn_age, kernel):
     matrix = np.zeros((2, 2))
     for images, references in dataset:
         if model is not None:
             predictions = model(images, training=False)
         else:
             predictions = images
+
+        # remove kernel / 2 pixels from all edges to reduce edge effects
+        k = kernel / 2
+        predictions = predictions[:, k:-k, k:-k, :]
+        references = references[:, k:-k, k:-k, :]
+
+        # flatten
         predictions = tf.reshape(predictions, [-1])
         references = tf.reshape(references, [-1])
+
 
         # convert burn age prediction into binary burn vs not burn class
         predictions = tf.where(predictions < max_burn_age, 1, 0)
@@ -280,8 +288,8 @@ def accuracy_assessment(matrix, labels):
 
     return df
 
-def burn_age_accuracy_assessment(model, dataset, max_burn_age):
-    matrix = burn_age_reference_accuracy(model, dataset, max_burn_age)
+def burn_age_accuracy_assessment(model, dataset, max_burn_age, kernel):
+    matrix = burn_age_reference_accuracy(model, dataset, max_burn_age, kernel)
     return accuracy_assessment(matrix, ['Not Burnt', 'Burnt'])
 
 def classification_accuracy_assessment(model, dataset, labels):

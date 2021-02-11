@@ -14,12 +14,12 @@ pd.options.display.max_columns = 15
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          model_folder='historicalFiresModels', annotation_type='level_slice',
-         output='all', shape=(256, 256), batch_size=100, stack_image=False,
-         include_previous_burn_age=False, burn_age_function='scale',
-         learning_rate=1e-4, epochs=100, steps_per_epoch=100,
-         train_model=False, load_model=True, loss_function='log',
-         upload=False, ee_folder='historicalFiresQCResults',
-         ee_user='boothmanrylan'):
+         output='all', shape=(128, 128), kernel=128, batch_size=100,
+         stack_image=False, include_previous_burn_age=False,
+         burn_age_function='scale', learning_rate=1e-4, epochs=100,
+         steps_per_epoch=100, train_model=False, load_model=True,
+         loss_function='log', upload=False,
+         ee_folder='historicalFiresQCResults', ee_user='boothmanrylan'):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -103,6 +103,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     else:
         raise ValueError(f'Bad burn age function {burn_age_function}')
 
+    # add kernel to shape to include overlap in earth engine patches
+    shape = (shape[0] + kernel, shape[1] + kernel)
+
     train_dataset = Data.get_dataset(
         patterns=train_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=annotation_bands,
@@ -125,7 +128,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     ref_point_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=['referencePoints'],
-        combine=combine, batch_size=batch_size, filters=True, shuffle=False,
+        combine=combine, batch_size=1, filters=True, shuffle=False,
         repeat=False, prefetch=True, cache=True, burn_age_function=None
     )
 
@@ -295,7 +298,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     print('Assessing model performance...')
     if output == 'burn_age':
         acc_assessment = Assessment.burn_age_accuracy_assessment(
-            model, ref_point_dataset, baf(3650)
+            model, ref_point_dataset, baf(3650), kernel
         )
     else:
         acc_assessment = Assessment.classification_accuracy_assessment(
