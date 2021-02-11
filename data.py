@@ -19,6 +19,10 @@ def filter_no_x(x, image, annotation, *annotations):
     return tf.reduce_any(tf.equal(annotation, compare))
 
 
+def filter_all_max_burn_age(image, annotation, *annotations):
+    return not tf.reduce_all(annotation == tf.reduce_max(annotation))
+
+
 def filter_no_burnt(image, annotation, *annotations):
     return (filter_no_x(4, image, annotation) or
             filter_no_x(5, image, annotation))

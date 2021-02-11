@@ -106,11 +106,16 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # add kernel to shape to include overlap in earth engine patches
     shape = (shape[0] + kernel, shape[1] + kernel)
 
+    if output == 'burn_age':
+        train_filter = Data.filter_all_max_burn_age
+    else:
+        train_filter = Data.filter_no_burnt
+
     train_dataset = Data.get_dataset(
         patterns=train_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=annotation_bands,
         combine=combine,
-        batch_size=batch_size, filters=Data.filter_no_burnt, shuffle=True,
+        batch_size=batch_size, filters=train_filter, shuffle=True,
         repeat=True, prefetch=True, cache=True,
         burn_age_function=baf
     )
