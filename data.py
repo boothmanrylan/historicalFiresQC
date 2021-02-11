@@ -40,7 +40,7 @@ def log_burn_age(burn_age):
 
 
 def inverse_log_burn_age(burn_age):
-    return 365(tf.math.exp(burn_age) - 1)
+    return 365 * (tf.math.exp(burn_age) - 1)
 
 
 def sigmoid_burn_age(burn_age):
@@ -60,7 +60,7 @@ def _add_separately(band_name, image_bands, parsed_example, shape, scale_fn):
     return band
 
 
-def _stack_bands(parsed_example, band_names, dtype, shape):
+def _stack_bands(parsed_example, band_names, dtype):
     '''Helper function for parse.'''
     if band_names:
         bands = [tf.cast(parsed_example[b], dtype) for b in band_names]
@@ -106,7 +106,7 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
     else:
         annot_dtype = tf.int64
 
-    annotation = _stack_bands(parsed, new_annotation_bands, annot_dtype, shape)
+    annotation = _stack_bands(parsed, new_annotation_bands, annot_dtype)
 
     if combine is not None:
         for original, change in combine:
@@ -146,7 +146,7 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
         if band in image_bands:
             new_image_bands.remove(band)
 
-    image = _stack_bands(parsed, new_image_bands, tf.float32, shape)
+    image = _stack_bands(parsed, new_image_bands, tf.float32)
     image /= 255.0 # MSS data is unsigned 8 bit integer therefore 255 is max
 
     if date_diff is not None:
@@ -168,7 +168,7 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
             image = tf.squeeze(prev_lslice_burn_age)
 
     if extra_bands is not None:
-        extra = _stack_bands(parsed, extra_bands, tf.float32, shape)
+        extra = _stack_bands(parsed, extra_bands, tf.float32)
         return image, annotation, extra
 
     return image, annotation
@@ -211,9 +211,11 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         annotation_bands = [annotation_bands]
 
     if '*' in patterns[0]: # patterns need unix style file expansion
-        files = tf.data.Dataset.list_files(patterns[0])
+        files = tf.data.Dataset.list_files(patterns[0], shuffle=False)
         for p in patterns[1:]:
-            files = files.concatenate(tf.data.Dataset.list_files(p))
+            files = files.concatenate(
+                tf.data.Dataset.list_files(p, shuffle=False)
+            )
     else: # pattern are complete file names
         files = tf.data.Dataset.list_files(patterns, shuffle=False)
 
