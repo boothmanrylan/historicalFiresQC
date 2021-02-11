@@ -69,7 +69,6 @@ def confusion_matrix_with_errors(model, dataset, classes):
     return output
 
 
-
 def acc(cm, classes):
     correct = cm * tf.eye(classes, classes)
     return tf.reduce_sum(correct) / tf.reduce_sum(cm)
@@ -128,7 +127,7 @@ def burn_age_reference_accuracy(model, dataset, max_burn_age):
         predictions = tf.where(predictions < max_burn_age, 1, 0)
 
         # drop all negative points in references as they are not labelled
-        mask = tf.reshape(tf.where(references >= 0), [-1])
+        mask = tf.reshape(tf.where(references > 0), [-1])
         print(mask.shape)
         predictions = tf.gather(predictions, mask)
         references = tf.gather(references, mask)
