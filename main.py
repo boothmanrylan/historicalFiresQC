@@ -300,26 +300,31 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ================================================================
     # ASSESS THE MODEL
     # ================================================================
-    print('Assessing model performance...')
-    if output == 'burn_age':
-        acc_assessment = Assessment.burn_age_accuracy_assessment(
-            model, ref_point_dataset, baf(3650), kernel
-        )
+    if train_model:
+        print('Assessing model performance...')
+        if output == 'burn_age':
+            acc_assessment = Assessment.burn_age_accuracy_assessment(
+                model, ref_point_dataset, baf(3650), kernel
+            )
+        else:
+            acc_assessment = Assessment.classification_accuracy_assessment(
+                model, ref_point_dataset, labels
+            )
+
+        # write accuracy assessment table to csv in model_path
+        assessment_path = os.path.join(model_path, 'assessment.csv')
+
+        print(f'Saving model assessment to {assessment_path}.')
+
+        acc_assessment.to_csv(assessment_path)
+
+        # TODO: make accuracy by burn age plots
+
+        print('Done assessing model.\n')
     else:
-        acc_assessment = Assessment.classification_accuracy_assessment(
-            model, ref_point_dataset, labels
-        )
-
-    # write accuracy assessment table to csv in model_path
-    assessment_path = os.path.join(model_path, 'assessment.csv')
-
-    print(f'Saving model assessment to {assessment_path}.')
-
-    acc_assessment.to_csv(assessment_path)
-
-    # TODO: make accuracy by burn age plots
-
-    print('Done assessing model.\n')
+        if load_model:
+            print(f'Loading previous assessment from {assessment_path}')
+            acc_assessment = pd.read_csv(assessment_path, index_col=0)
 
     # =================================================================
     # UPLOAD PREDICTIONS TO EARTH ENGINE
