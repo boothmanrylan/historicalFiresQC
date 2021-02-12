@@ -370,9 +370,14 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
             predictions = model.predict(dataset, steps=patches, verbose=1)
 
-            filename = m.replace('-mixer.json', '-results.tfrecord.gs')
+            filename = m.replace('-mixer.json', '-results.tfrecord.gz')
             filename = filename.replace(data_folder, '')
             output_file = os.path.join(model_path, filename)
+
+            print(filename)
+            print(model_path)
+            print(output_file)
+            exit()
 
             print(f'Writing results for {m} to {output_file}')
 
