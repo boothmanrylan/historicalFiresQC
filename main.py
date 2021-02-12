@@ -227,10 +227,6 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         input_shape=(*shape, channels), classes=classes
     )
 
-    dummy_dataset = np.random.normal(0, 1, (1, *shape, channels))
-    dummy_output = model(dummy_dataset, training=False)
-    print(f'Model has output shape: {dummy_output.shape}')
-
     if load_model:
         print(f'Loading model weights from {model_path}...')
         assert not prev_models.empty, "Cannot load weights, no model exists"
