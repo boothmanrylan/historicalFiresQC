@@ -325,7 +325,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # UPLOAD PREDICTIONS TO EARTH ENGINE
     # =================================================================
     if store_predictions:
-        print(f'Storing predictions in {model_folder}')
+        print(f'Storing predictions in {model_path}')
 
         try:
             result = subprocess.run(
@@ -370,7 +370,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
             predictions = model.predict(dataset, steps=patches, verbose=1)
 
-            output_file = output_file.replace('-mixer.json', '-results.tfrecord.gz')
+            output_file = m.replace('-mixer.json', '-results.tfrecord.gz')
             output_file = output_file.replace(data_folder, model_path)
             output_file = output_file.replace('//', '/')
 
