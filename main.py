@@ -364,7 +364,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             output_file = output_file.replace('-mixer.json', '.tfrecord.gz')
             output_file = output_file.replace(data_folder, model_path)
 
-            print(f'Writing results for {m} to {output_file}...')
+            print(f'Writing results for {m} to {output_file}')
 
             with tf.io.TFRecordWriter(output_file) as writer:
                 patch = 1
@@ -385,7 +385,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
                     example = tf.train.Example(
                         features=tf.train.Features(
-                            feature={model_number: feature}
+                            feature={f'{output}-{model_number:05d}': feature}
                         )
                     )
 
@@ -393,7 +393,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
                     patch += 1
 
             asset_id = os.path.join('users', ee_user, ee_folder, model_number)
-            print(f'Uploaded data for {m} to {asset_id}...')
+            print(f'Uploaded data for {m} to {asset_id}')
             subprocess.run([
                 'earthengine', 'upload', 'image', '--asset_id',
                 asset_id, output_file, m
