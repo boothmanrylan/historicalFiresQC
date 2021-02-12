@@ -415,7 +415,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'model': model,
         'assessment': acc_assessment,
         'data_folder': data_folder,
-        'model_folder': model_folder,
+        'model_folder': model_path,
         'model_number': model_number
     }
 
