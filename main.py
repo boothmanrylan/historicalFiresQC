@@ -385,14 +385,16 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
                     example = tf.train.Example(
                         features=tf.train.Features(
-                            feature={f'{output}-{model_number:05d}': feature}
+                            feature={output: feature}
                         )
                     )
 
                     writer.write(example.SerializeToString())
                     patch += 1
 
-            asset_id = os.path.join('users', ee_user, ee_folder, model_number)
+            asset_id = os.path.join(
+                'users', ee_user, ee_folder, f'{model_number:05d}'
+            )
             print(f'Uploaded data for {m} to {asset_id}')
             subprocess.run([
                 'earthengine', 'upload', 'image', '--asset_id',
