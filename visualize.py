@@ -71,7 +71,10 @@ def visualize(dataset, model=None, num=20, stacked_image=False, max_annot=None):
             ax[1].imshow(fcis[1], vmin=vmin, vmax=vmax)
             ax[1].set_title('Previous Patch')
 
-        vmax = len(colours) if max_annot is None else max_annot
+        vmax = len(colours)
+        if max_annot is not None:
+            vmax = 1
+            cmap = 'gray'
 
         offset = 2 if stacked_image else 1
         if annotations.ndim == 4:
