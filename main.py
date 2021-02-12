@@ -230,7 +230,11 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     if load_model:
         print(f'Loading model weights from {model_path}...')
         assert not prev_models.empty, "Cannot load weights, no model exists"
-        model.load_weights(model_path)
+        if not train_model:
+            # use expect partial to squash unresolved object warnings
+            model.load_weights(model_path).expect_partial()
+        else:
+            model.load_weights(model_path)
         print('Done loading model weights.\n')
     else:
         print('Not loading model weights.')
