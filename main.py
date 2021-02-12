@@ -328,19 +328,35 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     if upload:
         print('Setting up assets to upload to earth engine...')
 
-        all_files = subprocess.check_output(
-            ['gsutil', 'ls', data_folder],
-            universal_newlines=True
-        ).split('\n')
+        try:
+            result = subprocess.run(
+                ['gsutil', 'ls', data_folder],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                check=True
+            )
+        except subprocess.CalledProcessError as E:
+            print(E.stderr)
+            raise E
+
+        all_files = result.stdout.split('\n')
         mixer_files = [x for x in all_files if '.json' in x]
 
         for m in mixer_files:
-            mixer = json.loads(
-                subprocess.check_output(
+            try:
+                result = subprocess.run(
                     ['gsutil', 'cat', m],
-                    universal_newlines=True
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                    check=True
                 )
-            )
+            except subprocess.CalledProcessError as E:
+                print(E.stderr)
+                raise E
+
+            mixer = json.loads(result.stdout)
             patches = mixer['totalPatches']
 
             tfrecords = [
@@ -395,12 +411,20 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             asset_id = os.path.join(
                 'users', ee_user, ee_folder, f'{model_number:05d}'
             )
-            print(f'Uploaded data for {m} to {asset_id}')
-            subprocess.run([
-                'earthengine', 'upload', 'image', '--asset_id',
-                asset_id, output_file, m
-            ], check=True)
-            print('Done')
+            print(f'Uploading data for {m} to {asset_id}')
+            try:
+                result = subprocess.run(
+                    ['earthengine', 'upload', 'image', '--asset_id', asset_id,
+                     output_file, m],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                    check=True
+                )
+            except subprocess.CalledProcessError as E:
+                print(E.stderr)
+                raise E
+            print(result.stdout)
         print('Done setting up earth engine assets.\n')
 
     print('Main completed.')
