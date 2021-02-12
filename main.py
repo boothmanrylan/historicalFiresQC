@@ -370,7 +370,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
             predictions = model.predict(dataset, steps=patches, verbose=1)
 
-            filename = m.replace('-mixer.json', '-results.tfrecord.gz')
+            filename = m.replace('-mixer.json', '-results.tfrecord')
             filename = filename.replace(data_folder, '')
             if filename[0] == '/': # remove erroneous /
                 filename = filename[1:]
