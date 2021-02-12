@@ -124,7 +124,7 @@ def burn_age_reference_accuracy(model, dataset, max_burn_age, kernel):
         # remove kernel / 2 pixels from all edges to reduce edge effects
         k = int(kernel / 2)
         predictions = predictions[:, k:-k, k:-k, :]
-        references = references[:, k:-k, k:-k, :]
+        references = references[:, k:-k, k:-k]
 
         # flatten
         predictions = tf.reshape(predictions, [-1])
