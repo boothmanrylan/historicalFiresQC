@@ -1,6 +1,7 @@
 import os
 import glob
 import json
+import subprocess
 from datetime import datetime
 import tensorflow as tf
 import numpy as np
@@ -335,7 +336,6 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         ee.Initialize()
 
         mixer_files = glob.glob(os.path.join(data_folder,  '*.json'))
-        upload_assets = []
         for m in mixer_files:
             mixer = json.load(open(m))
             patches = mixer['totalPatches']
@@ -358,6 +358,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
                 output_file = m.replace('train', 'results')
             output_file = output_file.replace('-mixer.json', '.tfrecord.gz')
             output_file = output_file.replace(data_folder, model_path)
+
+            print(f'Writing results for {m} to {output_file}...')
 
             with tf.io.TFRecordWriter(output_file) as writer:
                 patch = 1
@@ -386,12 +388,14 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
                     patch += 1
 
             asset_id = os.path.join('users', ee_user, ee_folder, model_number)
-            upload_assets.append((asset_id, output_file, m))
+            print(f'Uploaded data for {m} to {asset_id}...')
+            subprocess.run([
+                'earthengine', 'upload', 'image', '--asset_id',
+                asset_id, output_file, m
+            ], check=True)
+            print('Done')
         print('Done setting up earth engine assets.\n')
-    else:
-        upload_assets = None
 
     print('Main completed.')
 
-    return (train_dataset, val_dataset, ref_point_dataset,
-            model, acc_assessment, upload_assets)
+    return (train_dataset, val_dataset, ref_point_dataset, model, acc_assessment)
