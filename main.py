@@ -381,6 +381,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             with tf.io.TFRecordWriter(output_file) as writer:
                 patch = 1
                 for pred in predictions:
+                    k = int(kernel / 2)
+                    pred = pred[k:-k, k:-k]
                     if output != 'burn_age':
                         value = np.argmax(pred, -1).flatten()
                         feature = tf.train.Feature(
