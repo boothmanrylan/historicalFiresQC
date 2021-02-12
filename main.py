@@ -335,7 +335,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         mixer_files = [x for x in all_files if '.json' in x]
 
         for m in mixer_files:
-            mixer = json.load(open(m))
+            mixer = json.loads(
+                subprocess.check_output(
+                    ['gsutil', 'cat', m],
+                    universal_newlines=True
+                )
+            )
             patches = mixer['totalPatches']
 
             tfrecords = [
