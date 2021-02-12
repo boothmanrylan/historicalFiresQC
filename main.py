@@ -1,12 +1,10 @@
 import os
-import glob
 import json
 import subprocess
 from datetime import datetime
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-import ee
 from . import data as Data
 from . import model as Model
 from . import assessment as Assessment
@@ -329,15 +327,20 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # =================================================================
     if upload:
         print('Setting up assets to upload to earth engine...')
-        ee.Authenticate()
-        ee.Initialize()
 
-        mixer_files = glob.glob(os.path.join(data_folder,  '*.json'))
+        all_files = subprocess.check_output(
+            ['gsutil', 'ls', data_folder],
+            universal_newlines=True
+        ).split('\n')
+        mixer_files = [x for x in all_files if '.json' in x]
+
         for m in mixer_files:
             mixer = json.load(open(m))
             patches = mixer['totalPatches']
 
-            tfrecords = glob.glob(m.replace('-mixer.json', '*.tfrecord.gz'))
+            tfrecords = [
+                x for x in all_files if m.replace('mixer.json', '') in x
+            ]
             tfrecords.sort()
 
             dataset = Data.get_dataset(
