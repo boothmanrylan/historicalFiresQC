@@ -122,7 +122,7 @@ def burn_age_reference_accuracy(model, dataset, max_burn_age, kernel):
             predictions = images
 
         # remove kernel / 2 pixels from all edges to reduce edge effects
-        k = kernel / 2
+        k = int(kernel / 2)
         predictions = predictions[:, k:-k, k:-k, :]
         references = references[:, k:-k, k:-k, :]
 
