@@ -17,8 +17,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          stack_image=False, include_previous_burn_age=False,
          burn_age_function='scale', learning_rate=1e-4, epochs=100,
          steps_per_epoch=100, train_model=False, load_model=True,
-         loss_function='log', upload=False,
-         ee_folder='historicalFiresQCResults', ee_user='boothmanrylan'):
+         loss_function='log', store_predictions=False):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -325,8 +324,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # =================================================================
     # UPLOAD PREDICTIONS TO EARTH ENGINE
     # =================================================================
-    if upload:
-        print('Setting up assets to upload to earth engine...')
+    if store_predictions:
+        print(f'Storing predictions in {model_folder}')
 
         try:
             result = subprocess.run(
@@ -371,14 +370,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
             predictions = model.predict(dataset, steps=patches, verbose=1)
 
-            if 'val' in m:
-                output_file = m.replace('val', 'results')
-            elif 'test' in m:
-                output_file = m.replace('test', 'results')
-            elif 'train' in m:
-                output_file = m.replace('train', 'results')
-            output_file = output_file.replace('-mixer.json', '.tfrecord.gz')
+            output_file = output_file.replace('-mixer.json', '-results.tfrecord.gz')
             output_file = output_file.replace(data_folder, model_path)
+            output_file = output_file.replace('//', '/')
 
             print(f'Writing results for {m} to {output_file}')
 
@@ -408,25 +402,19 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
                     writer.write(example.SerializeToString())
                     patch += 1
 
-            asset_id = os.path.join(
-                'users', ee_user, ee_folder, f'{model_number:05d}'
-            )
-            print(f'Uploading data for {m} to {asset_id}')
-            try:
-                result = subprocess.run(
-                    ['earthengine', 'upload', 'image', '--asset_id', asset_id,
-                     output_file, m],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True,
-                    check=True
-                )
-            except subprocess.CalledProcessError as E:
-                print(E.stderr)
-                raise E
-            print(result.stdout)
-        print('Done setting up earth engine assets.\n')
+        print('Done storing predictions.\n')
 
     print('Main completed.')
 
-    return (train_dataset, val_dataset, ref_point_dataset, model, acc_assessment)
+    output = {
+        'train_dataset': train_dataset,
+        'val_dataset': val_dataset,
+        'ref_point_dataset': ref_point_dataset,
+        'model': model,
+        'assessment': acc_assessment,
+        'data_folder': data_folder,
+        'model_folder': model_folder,
+        'model_number': model_number
+    }
+
+    return output
