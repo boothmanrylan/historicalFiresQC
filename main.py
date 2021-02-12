@@ -301,6 +301,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ================================================================
     # ASSESS THE MODEL
     # ================================================================
+    assessment_path = os.path.join(model_path, 'assessment.csv')
     if train_model:
         print('Assessing model performance...')
         if output == 'burn_age':
@@ -312,11 +313,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
                 model, ref_point_dataset, labels
             )
 
-        # write accuracy assessment table to csv in model_path
-        assessment_path = os.path.join(model_path, 'assessment.csv')
-
         print(f'Saving model assessment to {assessment_path}.')
-
         acc_assessment.to_csv(assessment_path)
 
         # TODO: make accuracy by burn age plots
