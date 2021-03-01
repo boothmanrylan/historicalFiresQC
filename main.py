@@ -422,3 +422,19 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     }
 
     return output
+
+if __name__ == '__main__':
+    params = {
+        'bucket': '/home/rylan/school/historicalFiresQC/',
+        'data_folder': 'data',
+        'model_folder': 'models',
+        'shape': (128, 128),
+        'kernel': 32,
+        'batch_size': 8,
+        'epochs': 2,
+        'steps_per_epoch': 1,
+        'train_model': True,
+        'load_model': False,
+        'store_predictions': False
+    }
+    main(**params)
