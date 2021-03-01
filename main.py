@@ -17,7 +17,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          stack_image=False, include_previous_burn_age=False,
          burn_age_function='scale', learning_rate=1e-4, epochs=100,
          steps_per_epoch=100, train_model=False, load_model=True,
-         loss_function='log', store_predictions=False):
+         loss_function='basic', store_predictions=False):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
