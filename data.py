@@ -10,25 +10,32 @@ all_bands = [
 ]
 
 
-def filter_blank(image, annotation, *annotations):
+def filter_blank(image, _):
     return not tf.reduce_max(image) == 0
 
 
-def filter_no_x(x, image, annotation, *annotations):
+def filter_no_x(x, _, annotation):
     compare = tf.cast(tf.fill(tf.shape(annotation), x), annotation.dtype)
     return tf.reduce_any(tf.equal(annotation, compare))
 
 
-def filter_all_max_burn_age(image, annotation, *annotations):
-    return not tf.reduce_all(annotation == tf.reduce_max(annotation))
+def filter_all_max_burn_age(_, annotation):
+    if len(tf.shape(annotation)) > 2:
+        # annotation has extra bands in it e.g. to mask burn edges
+        # dont use the extra bands
+        _annotation = annotation[:, :, 0]
+        output = not tf.reduce_all(_annotation == tf.reduce_max(_annotation))
+    else:
+        output = not tf.reduce_all(annotation == tf.reduce_max(annotation))
+    return output
 
 
-def filter_no_burnt(image, annotation, *annotations):
+def filter_no_burnt(image, annotation):
     return (filter_no_x(4, image, annotation) or
             filter_no_x(5, image, annotation))
 
 
-def filter_nan(image, annotation, *annotations):
+def filter_nan(image, _):
     return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
 
 def scale_burn_age(burn_age):
@@ -75,14 +82,10 @@ def _stack_bands(parsed_example, band_names, dtype):
 
 
 @tf.function
-def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
-          combine=None, burn_age_function=None):
-    if extra_bands is not None:
-        extra_bands = extra_bands.copy()
+def parse(example, shape, image_bands, annotation_bands, combine=None,
+          burn_age_function=None):
 
     used_bands = image_bands + annotation_bands
-    if extra_bands is not None:
-        used_bands.extend(extra_bands)
 
     feature_description = {
         k: tf.io.FixedLenFeature(shape, tf.float32) for k in used_bands
@@ -175,16 +178,12 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
         else:
             image = tf.squeeze(prev_lslice_burn_age)
 
-    if extra_bands is not None:
-        extra = _stack_bands(parsed, extra_bands, tf.float32)
-        return image, annotation, extra
-
     return image, annotation
 
 
 def get_dataset(patterns, shape, image_bands, annotation_bands,
-                extra_bands=None, combine=None, batch_size=64, filters=True,
-                cache=False, shuffle=False, repeat=False, prefetch=False,
+                combine=None, batch_size=64, filters=True, cache=False,
+                shuffle=False, repeat=False, prefetch=False,
                 burn_age_function=None):
     """
     Create a TFRecord dataset.
@@ -194,8 +193,6 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     shape (int tuple): Shape of each patch without band dimension.
     image_bands (str list): Name of each band to use in model input.
     annotation_bands (str list): Name of each band to use in ground truth.
-    extra_bands (str list): Name of bands to return as an addition image e.g.
-        to mask out the edges of burns in the loss calculation.
     combine ((int, int) list): For each tuple in combine replace all pixels in
         annotation that eqaul the first value with the second value.
     filters (bool or function list): If false no filters are applied, if true
@@ -246,8 +243,8 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
-        lambda x: parse(x, shape, image_bands, annotation_bands,
-                        extra_bands, combine, burn_age_function),
+        lambda x: parse(x, shape, image_bands, annotation_bands, combine,
+                        burn_age_function),
         num_parallel_calls=AUTOTUNE
     )
 
