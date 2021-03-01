@@ -216,13 +216,13 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         annotation_bands = [annotation_bands]
 
     if '*' in patterns[0]: # patterns need unix style file expansion
-        files = tf.data.Dataset.list_files(patterns[0], shuffle=False)
+        files = tf.data.Dataset.list_files(patterns[0], shuffle=shuffle)
         for p in patterns[1:]:
             files = files.concatenate(
-                tf.data.Dataset.list_files(p, shuffle=False)
+                tf.data.Dataset.list_files(p, shuffle=shuffle)
             )
     else: # pattern are complete file names
-        files = tf.data.Dataset.list_files(patterns, shuffle=False)
+        files = tf.data.Dataset.list_files(patterns, shuffle=shuffle)
 
     # ensure band names are all valid
     for b in image_bands:
