@@ -1,5 +1,4 @@
 import tensorflow as tf
-import tensorflow_addons as tfa
 from tensorflow_examples.models.pix2pix import pix2pix
 
 def build_unet_model(input_shape, classes):
@@ -52,6 +51,7 @@ def build_unet_model(input_shape, classes):
 
     return tf.keras.Model(inputs=inputs, outputs=x)
 
+
 def weighted_loss(loss_fn, weights, **loss_args):
     '''
     loss_fn: any loss function, such as categorical_crossentropy
@@ -59,7 +59,56 @@ def weighted_loss(loss_fn, weights, **loss_args):
              weight of the ith class.
     loss_args: any named arguments to pass to the loss_fn, such as from_logits
     '''
-    def fn(true, pred):
+    def _weighted_loss(true, pred):
         loss = loss_fn(true, pred, **loss_args)
         return loss * tf.gather(weights, tf.cast(true, tf.int32))
-    return fn
+    return _weighted_loss
+
+
+def reference_point_loss(loss_fn, weights=None, alpha=1.0, beta=1.0, **args):
+    """
+    Include a term in the loss based on reference points.
+
+    True values expected to have shape (x, y, 2) for input images with shape
+    (x, y) i.e. as a channels last image where the channels are the default
+    labels and the reference points repectively. Pixels that are not reference
+    points should have negative values in the reference points channel.
+
+    If weights are given, they are used to weight the term in the loss function
+    based on the default labels.
+
+    Applies loss_fn separately to bath (labels, pred) and (ref_points, pred).
+    Returns the sum of both losses weighted by alpha and beta:
+        (alpha * loss_fn(labels, pred)) + (beta * loss_fn(ref_points, pred))
+    """
+    def _ref_point_loss(true, pred):
+        labels, ref_points = true[:, :, :, 0], true[:, :, :, 1]
+
+        base_loss = loss_fn(labels, pred, **args)
+        if weights is not None:
+            base_loss *= tf.gather(weights, tf.cast(labels, tf.int32))
+
+        # can't compute loss with values outside 0..n, but non reference points
+        # have values < 0 therefore flip them all to 0 to calculate loss then
+        # remove them later
+        pos_ref_points = tf.where(
+            ref_points < 0,
+            tf.cast(0, ref_points.dtype),
+            ref_points
+        )
+
+        ref_loss = loss_fn(pos_ref_points, pred, **args)
+
+        # remove non reference points
+        ref_loss *= tf.cast(tf.where(ref_points > 0, 1, 0), ref_loss.dtype)
+
+        return (alpha * base_loss) + (beta * ref_loss)
+    return _ref_point_loss
+
+def basic_loss(loss_fn, **args):
+    '''
+    Here to make the basic loss more compatible with the other loss functions
+    '''
+    def _basic_loss(true, pred):
+        return loss_fn(true, pred, **args)
+    return _basic_loss

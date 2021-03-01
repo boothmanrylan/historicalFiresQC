@@ -1,46 +1,116 @@
-import itertools
 import tensorflow as tf
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
+all_bands = [
+    'B4', 'B5', 'B6', 'B7', 'OldB4', 'OldB5', 'OldB6', 'OldB7',
+    'dateDiff', 'prevLSliceBurnAge', 'prevBBoxBurnAge', 'lsliceClass',
+    'bboxClass', 'lsliceBurnAge', 'bboxBurnAge', 'lsliceBurnEdges',
+    'bboxBurnEdges', 'referencePoints', 'refBurnAge'
+]
 
-# some earth engine bands come as tf.string and require tf.io.decode_raw to
-# parse, others come as their expected dtype and dont, unclear why
-string_bands = ['B4', 'B5', 'B6', 'B7', 'OldB4', 'OldB5',
-                'OldB6', 'OldB7', 'class', 'noisyClass']
-float_bands = ['dateDiff', 'referencePoints', 'mergedReferencePoints',
-               'burnAge', 'mergedBurnAge']
-int_bands = ['CART', 'stackedCART']
+
+def filter_blank(image, annotation, *annotations):
+    return not tf.reduce_max(image) == 0
+
+
+def filter_no_x(x, image, annotation, *annotations):
+    compare = tf.cast(tf.fill(tf.shape(annotation), x), annotation.dtype)
+    return tf.reduce_any(tf.equal(annotation, compare))
+
+
+def filter_all_max_burn_age(image, annotation, *annotations):
+    return not tf.reduce_all(annotation == tf.reduce_max(annotation))
+
+
+def filter_no_burnt(image, annotation, *annotations):
+    return (filter_no_x(4, image, annotation) or
+            filter_no_x(5, image, annotation))
+
+
+def filter_nan(image, annotation, *annotations):
+    return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
+
+def scale_burn_age(burn_age):
+    return burn_age / (3650)
+
+
+def inverse_scale_burn_age(burn_age):
+    return burn_age * 3650
+
+
+def log_burn_age(burn_age):
+    return tf.math.log((burn_age / 365) + 1)
+
+
+def inverse_log_burn_age(burn_age):
+    return 365 * (tf.math.exp(burn_age) - 1)
+
+
+def sigmoid_burn_age(burn_age):
+    return 2 * tf.math.sigmoid(burn_age / 730) - 1
+
+
+def inverse_sigmoid_burn_age(burn_age):
+    return -730 * tf.math.log((2 / (burn_age + 1)) - 1)
+
+
+def _add_separately(band_name, image_bands, parsed_example, shape, scale_fn):
+    '''Helper function for parse.'''
+    if band_name in image_bands:
+        band = scale_fn(tf.reshape(parsed_example[band_name], (*shape, 1)))
+    else:
+        band = None
+    return band
+
+
+def _stack_bands(parsed_example, band_names, dtype):
+    '''Helper function for parse.'''
+    if band_names:
+        bands = [tf.cast(parsed_example[b], dtype) for b in band_names]
+        output = tf.squeeze(tf.stack(bands, axis=-1))
+    else:
+        output = None
+    return output
+
 
 @tf.function
-def parse(example, shape, image_bands, annotation_bands, combine=None):
+def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
+          combine=None, burn_age_function=None):
+    if extra_bands is not None:
+        extra_bands = extra_bands.copy()
+
     feature_description = {
-        k: tf.io.FixedLenFeature((), tf.string) for k in string_bands
+        k: tf.io.FixedLenFeature(shape, tf.float32) for k in all_bands
     }
-    feature_description.update({
-        k: tf.io.FixedLenFeature(shape, tf.float32) for k in float_bands
-    })
-    feature_description.update({
-        k: tf.io.FixedLenFeature(shape, tf.int64) for k in int_bands
-    })
-    def stack_bands(parsed_example, band_names, output_dtype):
-        bands = [
-            tf.cast(
-                tf.reshape(
-                    tf.io.decode_raw(parsed_example[band], tf.uint8),
-                    shape
-                ),
-                output_dtype
-            )
-            if band in string_bands
-            else tf.cast(parsed_example[band], output_dtype)
-            for band in band_names
-        ]
-        return tf.stack(bands, axis=-1)
+
+    if burn_age_function is None:
+        burn_age_function = scale_burn_age
 
     parsed = tf.io.parse_single_example(example, feature_description)
 
-    annotation = stack_bands(parsed, annotation_bands, tf.int64)
+    # burn age bands must be scaled, but regular annotation bands should not be
+    # scaled therefore add them each separately to the annotation
+    lslice_burn_age = _add_separately(
+        'lsliceBurnAge', annotation_bands, parsed, shape, burn_age_function
+    )
+
+    bbox_burn_age = _add_separately(
+        'bboxBurnAge', annotation_bands, parsed, shape, burn_age_function
+    )
+
+    # ensure burn age bands are not added to the annotation twice
+    new_annotation_bands = annotation_bands.copy()
+    for band in ['lsliceBurnAge', 'bboxBurnAge']:
+        if band in annotation_bands:
+            new_annotation_bands.remove(band)
+
+    if lslice_burn_age is not None or bbox_burn_age is not None:
+        annot_dtype = tf.float32
+    else:
+        annot_dtype = tf.int64
+
+    annotation = _stack_bands(parsed, new_annotation_bands, annot_dtype)
 
     if combine is not None:
         for original, change in combine:
@@ -48,165 +118,94 @@ def parse(example, shape, image_bands, annotation_bands, combine=None):
             change = tf.cast(change, annotation.dtype)
             annotation = tf.where(annotation == original, change, annotation)
 
-    # the date difference needs to be scaled by a different value than the
-    # other possible image bands therefore extract it on its own and concat
-    # with the rest of image after scaling both separately
-    if 'dateDiff' in image_bands:
-        image_bands.remove('dateDiff')
-        date_diff = tf.reshape(parsed.pop('dateDiff'), (*shape, 1))
-        date_diff /= 1071 # hard coded max date difference
-    else:
-        date_diff = None
+    if lslice_burn_age is not None:
+        if annotation is not None:
+            annotation = tf.concat([annotation, lslice_burn_age], -1)
+        else:
+            annotation = tf.squeeze(lslice_burn_age)
 
-    image = stack_bands(parsed, image_bands, tf.float32)
-    image /= 255.0
+    if bbox_burn_age is not None:
+        if annotation is not None:
+            annotation = tf.concat([annotation, bbox_burn_age], -1)
+        else:
+            annotation = tf.squeeze(bbox_burn_age)
+
+    # dateDiff and burn age bands must be scaled differently than MSS bands
+    # therefore add them each separately to the image
+    date_diff = _add_separately(
+        'dateDiff', image_bands, parsed, shape, lambda x: x / 1071
+    )
+
+    prev_bbox_burn_age = _add_separately(
+        'prevBBoxBurnAge', image_bands, parsed, shape, burn_age_function
+    )
+
+    prev_lslice_burn_age = _add_separately(
+        'prevLSliceBurnAge', image_bands, parsed, shape, burn_age_function
+    )
+
+    # ensure the bands added separately are not added twice
+    new_image_bands = image_bands.copy()
+    for band in ['dateDiff', 'prevBBoxBurnAge', 'prevLSliceBurnAge']:
+        if band in image_bands:
+            new_image_bands.remove(band)
+
+    image = _stack_bands(parsed, new_image_bands, tf.float32)
+    image /= 255.0 # MSS data is unsigned 8 bit integer therefore 255 is max
 
     if date_diff is not None:
-        image = tf.concat([image, date_diff], -1)
+        if image is not None:
+            image = tf.concat([image, date_diff], -1)
+        else:
+            image = tf.squeeze(date_diff)
 
-    # stack_bands adds an extra dimension with shape 1 if called on a single
-    # band, remove it here with squeeze (does nothing if no dim with shape 1
-    # exists)
-    return tf.squeeze(image), tf.squeeze(annotation)
+    if prev_bbox_burn_age is not None:
+        if image is not None:
+            image = tf.concat([image, prev_bbox_burn_age], -1)
+        else:
+            image = tf.squeeze(prev_bbox_burn_age)
+
+    if prev_lslice_burn_age is not None:
+        if image is not None:
+            image = tf.concat([image, prev_lslice_burn_age], -1)
+        else:
+            image = tf.squeeze(prev_lslice_burn_age)
+
+    if extra_bands is not None:
+        extra = _stack_bands(parsed, extra_bands, tf.float32)
+        return image, annotation, extra
+
+    return image, annotation
 
 
-@tf.function
-def parse_all(example, shape, get_images=True, stack_image=False,
-          include_date_difference=False, clean_annotation=False,
-          noisy_annotation=False, combined_burnt=False, split_burnt=False,
-          get_ref_points=False, get_merged_ref_points=False,
-          get_burn_age=False, get_merged_burn_age=False,
-          get_CART_classification=False,
-          get_stacked_CART_classification=False):
+def get_dataset(patterns, shape, image_bands, annotation_bands,
+                extra_bands=None, combine=None, batch_size=64, filters=True,
+                cache=False, shuffle=False, repeat=False, prefetch=False,
+                burn_age_function=None):
     """
-    Parse TFRecords containing annotated MSS data.
+    Create a TFRecord dataset.
 
-    Assumes TFRecords contain both a "clean" and a "noisy" annotation. Either
-    or both of the annotations can be returned by setting clean_annotation
-    and/or noisy_annotation to True. Defaults to just return the clean
-    annotations.
+    patterns (str/str list): Files to create dataset from. Can either be
+        complete filepaths or unix style patterns.
+    shape (int tuple): Shape of each patch without band dimension.
+    image_bands (str list): Name of each band to use in model input.
+    annotation_bands (str list): Name of each band to use in ground truth.
+    extra_bands (str list): Name of bands to return as an addition image e.g.
+        to mask out the edges of burns in the loss calculation.
+    combine ((int, int) list): For each tuple in combine replace all pixels in
+        annotation that eqaul the first value with the second value.
+    filters (bool or function list): If false no filters are applied, if true
+        any patches with NaN or whose annotations are all blank are filtered
+        out, if a function list in addition to the NaN and blank filter the
+        functions are also applied as filters.
+    cache (bool): if true cache the dataset
+    shuffle (bool): if true shuffle dataset with buffer size 1000.
+    repeat (bool): if true dataset repeates infinitely.
+    prefetch (bool): if true the dataset is prefetched with AUTOTUNE buffer.
+    burn_age_function (function): If given, applied to burn age during parse.
 
-    Assumes the numerically largest and second largest classes represent new
-    and old burns. The burn classes can be returned as separate classes and/or
-    as one class by setting combined_burnt and/or split_burnt to True. Defaults
-    to returning them as one class.
-
-    Regardless of how many or which combinations of clean/noisy combined/split
-    are returned the output will always be in this order:
-    image, combined clean, split clean, combined clean, split noisy
+    Returns a tf.data.TFRecordDataset
     """
-    feature_description = {
-        k: tf.io.FixedLenFeature((), tf.string) for k in string_bands
-    }
-    feature_description.update({
-        k: tf.io.FixedLenFeature(shape, tf.float32) for k in float_bands
-    })
-    feature_description.update({
-        k: tf.io.FixedLenFeature(shape, tf.int64) for k in int_bands
-    })
-
-    parsed = tf.io.parse_single_example(example, feature_description)
-
-    split_burnt_clean_annotation = tf.reshape(
-        tf.io.decode_raw(parsed.pop('class'), tf.uint8),
-        shape
-    )
-
-    split_burnt_noisy_annotation = tf.reshape(
-        tf.io.decode_raw(parsed.pop('noisyClass'), tf.uint8),
-        shape
-    )
-
-    ref_points = tf.reshape(parsed.pop('referencePoints'), shape)
-
-    merged_ref_points = tf.reshape(parsed.pop('mergedReferencePoints'), shape)
-
-    burn_age = tf.reshape(parsed.pop('burnAge'), shape)
-
-    merged_burn_age = tf.reshape(parsed.pop('mergedBurnAge'), shape)
-
-    CART_classification = tf.reshape(parsed.pop('CART'), shape)
-
-    stacked_CART_classification = tf.reshape(parsed.pop('stackedCART'), shape)
-
-    date_difference = tf.reshape(parsed.pop('dateDiff'), (*shape, 1))
-
-    date_difference /= 1071 # hard coded maximum date difference
-
-    drop =  tf.reduce_max(split_burnt_clean_annotation)
-    replace =  drop - 1
-    combined_burnt_clean_annotation = tf.where(
-        split_burnt_clean_annotation == drop,
-        replace,
-        split_burnt_clean_annotation)
-    combined_burnt_noisy_annotation = tf.where(
-        split_burnt_noisy_annotation == drop,
-        replace,
-        split_burnt_noisy_annotation
-    )
-
-    bands = ['B4', 'B5', 'B6', 'B7']
-    if stack_image:
-        bands.extend(['OldB4', 'OldB5', 'OldB6', 'OldB7'])
-
-    image = tf.cast(
-        tf.stack([
-            tf.reshape(tf.io.decode_raw(parsed[k], tf.uint8), shape)
-            for k in bands
-        ], axis=-1),
-        tf.float32
-    )
-
-    image /= 255.0
-
-    if stack_image and include_date_difference:
-        image = tf.concat([image, date_difference], -1)
-
-    outputs = [image,
-               combined_burnt_clean_annotation,
-               split_burnt_clean_annotation,
-               combined_burnt_noisy_annotation,
-               split_burnt_noisy_annotation,
-               CART_classification,
-               stacked_CART_classification,
-               ref_points,
-               merged_ref_points,
-               burn_age,
-               merged_burn_age]
-
-    selectors = [get_images,
-                 combined_burnt and clean_annotation,
-                 split_burnt and clean_annotation,
-                 combined_burnt and noisy_annotation,
-                 split_burnt and noisy_annotation,
-                 get_CART_classification,
-                 get_stacked_CART_classification,
-                 get_ref_points,
-                 get_merged_ref_points,
-                 get_burn_age,
-                 get_merged_burn_age]
-
-    return list(itertools.compress(outputs, selectors))
-
-
-def filter_blank(image, annotation, *annotations):
-    return not (tf.reduce_min(annotation) == 0 and
-                tf.reduce_max(annotation) == 0)
-
-def filter_no_x(x, image, annotation, *annotations):
-    compare = tf.cast(tf.fill(tf.shape(annotation), x), annotation.dtype)
-    return tf.reduce_any(tf.equal(annotation, compare))
-
-def filter_no_burnt(image, annotation, *annotations):
-    return (filter_no_x(4, image, annotation) or
-            filter_no_x(5, image, annotation))
-
-def filter_nan(image, annotation, *annotations):
-    return not tf.reduce_any(tf.math.is_nan(tf.cast(image, tf.float32)))
-
-def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
-                batch_size=64, filters=True, cache=False, shuffle=False,
-                repeat=False, prefetch=False):
 
     if not isinstance(patterns, list):
         patterns = [patterns]
@@ -216,16 +215,35 @@ def get_dataset(patterns, shape, image_bands, annotation_bands, combine=None,
         annotation_bands = [annotation_bands]
 
     if '*' in patterns[0]: # patterns need unix style file expansion
-        files = tf.data.Dataset.list_files(patterns[0])
-
+        files = tf.data.Dataset.list_files(patterns[0], shuffle=False)
         for p in patterns[1:]:
-            files = files.concatenate(tf.data.Dataset.list_files(p))
+            files = files.concatenate(
+                tf.data.Dataset.list_files(p, shuffle=False)
+            )
     else: # pattern are complete file names
         files = tf.data.Dataset.list_files(patterns, shuffle=False)
 
+    # ensure band names are all valid
+    for b in image_bands:
+        try:
+            assert b in all_bands
+        except AssertionError as E:
+            raise ValueError(f'invalid image band name: {b}') from E
+    for b in annotation_bands:
+        try:
+            assert b in all_bands
+        except AssertionError as E:
+            raise ValueError(f'invalid annotation band name: {b}') from E
+
+    # set combine to None if predicting burn age
+    if ('lsliceBurnAge' in annotation_bands or
+        'bboxBurnAge' in annotation_bands):
+        combine=None
+
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
-        lambda x: parse(x, shape, image_bands, annotation_bands, combine),
+        lambda x: parse(x, shape, image_bands, annotation_bands,
+                        extra_bands, combine, burn_age_function),
         num_parallel_calls=AUTOTUNE
     )
 
