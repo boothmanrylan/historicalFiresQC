@@ -80,8 +80,12 @@ def parse(example, shape, image_bands, annotation_bands, extra_bands=None,
     if extra_bands is not None:
         extra_bands = extra_bands.copy()
 
+    used_bands = image_bands + annotation_bands
+    if extra_bands is not None:
+        used_bands.extend(extra_bands)
+
     feature_description = {
-        k: tf.io.FixedLenFeature(shape, tf.float32) for k in all_bands
+        k: tf.io.FixedLenFeature(shape, tf.float32) for k in used_bands
     }
 
     if burn_age_function is None:
