@@ -5,9 +5,9 @@ from datetime import datetime
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-from . import data as Data
-from . import model as Model
-from . import assessment as Assessment
+import data as Data
+import model as Model
+import assessment as Assessment
 
 pd.options.display.max_columns = 15
 
