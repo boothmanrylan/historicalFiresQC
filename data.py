@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.keras.layers.experimental import preprocessing
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
@@ -180,6 +181,28 @@ def parse(example, shape, image_bands, annotation_bands, combine=None,
 
     return image, annotation
 
+def augment_data(x, y, *args, generator=None):
+    """
+    randomly flipx, rotates, and zooms x
+
+    transformations that change the locations of pixels in x also change
+    the locations of the pixels in y in an identical manner
+    """
+    assert generator is not None
+    seeds = generator.uniform_full_int([3], dtype=tf.dtypes.uint64)
+
+    augmenter = tf.keras.Sequential([
+        preprocessing.RandomFlip("horizontal_and_vertical", seed=seeds[0]),
+        preprocessing.RandomRotation(0.2, seed=seeds[1]),
+        preprocessing.RandomZoom((-0.2, 0.2), seed=seeds[2])
+    ])
+
+    new_x = augmenter(x, training=True)
+    new_y = augmenter(y, training=True)
+    new_args = tuple([augmenter(x, training=True) for x in args])
+
+    return new_x, new_y, new_args
+
 
 def get_dataset(patterns, shape, image_bands, annotation_bands,
                 combine=None, batch_size=64, filters=True, cache=False,
@@ -204,6 +227,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     repeat (bool): if true dataset repeates infinitely.
     prefetch (bool): if true the dataset is prefetched with AUTOTUNE buffer.
     burn_age_function (function): If given, applied to burn age during parse.
+    augment (bool): If true the data is augmented with random flips etc...
 
     Returns a tf.data.TFRecordDataset
     """
@@ -263,6 +287,13 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         dataset = dataset.shuffle(1000)
 
     dataset = dataset.batch(batch_size)
+
+    if augment:
+        g = tf.random.Generator.from_non_deterministic_state()
+        dataset = dataset.map(
+            lambda x, y, *args: augment_data(x, y, *args, generator=g),
+            num_parallel_calls=AUTOTUNE
+        )
 
     if repeat:
         dataset = dataset.repeat()
