@@ -13,8 +13,8 @@ colours = [
 ]
 bounds = [0, 1, 2, 3, 4, 5, 6]
 
-cmap = ListedColormap(colours)
-norm = BoundaryNorm(bounds, cmap.N)
+class_cmap = ListedColormap(colours)
+class_norm = BoundaryNorm(bounds, class_cmap.N)
 
 def false_colour_image(image, stacked_image=False):
     """
@@ -71,22 +71,26 @@ def visualize(dataset, model=None, num=20, stacked_image=False, max_annot=None):
             ax[1].imshow(fcis[1], vmin=vmin, vmax=vmax)
             ax[1].set_title('Previous Patch')
 
-        vmax = len(colours)
+        vmax, vmin = None, None
+        cmap = class_cmap
+        norm = class_norm
         if max_annot is not None:
-            vmax = 1
+            vmax = max_annot
+            vmin = 0
             cmap = 'gray'
+            norm = None
 
         offset = 2 if stacked_image else 1
         if annotations.ndim == 4:
             for i in range(annotations.shape[-1]):
                 annotation = tf.squeeze(annotations[0, :, :, i]).numpy()
-                ax[i + offset].imshow(annotation, vmin=0, vmax=vmax,
+                ax[i + offset].imshow(annotation, vmin=vmin, vmax=vmax,
                                       cmap=cmap, interpolation='nearest',
                                       norm=norm)
                 ax[i + offset].set_title(f'Annotation {i + 1}')
         else:
             annotation = tf.squeeze(annotations[0]).numpy()
-            ax[offset].imshow(annotation, vmin=0, vmax=vmax,
+            ax[offset].imshow(annotation, vmin=vmin, vmax=vmax,
                               cmap=cmap, interpolation='nearest',
                               norm=norm)
             ax[offset].set_title('Annotation')
@@ -95,7 +99,8 @@ def visualize(dataset, model=None, num=20, stacked_image=False, max_annot=None):
             prediction = tf.argmax(
                 model(images, training=False)[0], -1
             ).numpy()
-            ax[num_figs - 1].imshow(prediction, vmin=0, vmax=vmax,
+            ax[num_figs - 1].imshow(prediction, vmin=vmin, vmax=vmax,
                                     cmap=cmap, interpolation='nearest',
                                     norm=norm)
             ax[num_figs - 1].set_title('Model Prediction')
+        plt.show()
