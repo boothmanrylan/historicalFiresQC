@@ -115,7 +115,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         combine=combine,
         batch_size=batch_size, filters=train_filter, shuffle=True,
         repeat=True, prefetch=True, cache=True,
-        burn_age_function=baf
+        burn_age_function=baf, augment=True
     )
 
     # TODO NOW: out of image burn age doens't make sense 0 === most burned
@@ -125,14 +125,15 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         image_bands=image_bands, annotation_bands=annotation_bands,
         combine=combine, batch_size=batch_size, filters=None,
         shuffle=False, repeat=False, prefetch=True, cache=True,
-        burn_age_function=baf
+        burn_age_function=baf, augment=False
     )
 
     ref_point_dataset = Data.get_dataset(
         patterns=val_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=['referencePoints'],
         combine=combine, batch_size=1, filters=True, shuffle=False,
-        repeat=False, prefetch=True, cache=True, burn_age_function=None
+        repeat=False, prefetch=True, cache=True, burn_age_function=None,
+        augment=False
     )
 
     # test_dataset = Data.get_dataset(

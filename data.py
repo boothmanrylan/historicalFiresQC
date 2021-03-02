@@ -10,7 +10,6 @@ all_bands = [
     'bboxBurnEdges', 'referencePoints', 'refBurnAge'
 ]
 
-
 def filter_blank(image, _):
     return not tf.reduce_max(image) == 0
 
@@ -181,33 +180,62 @@ def parse(example, shape, image_bands, annotation_bands, combine=None,
 
     return image, annotation
 
-def augment_data(x, y, *args, generator=None):
+# used by augment data to randomly flip, rotate and zoom training data
+augmenter = tf.keras.Sequential([
+    preprocessing.RandomFlip("horizontal_and_vertical"),
+    preprocessing.RandomRotation(0.3),
+    preprocessing.RandomZoom(0.2)
+])
+
+@tf.function
+def augment_data(x, y):
     """
-    randomly flipx, rotates, and zooms x
-
-    transformations that change the locations of pixels in x also change
-    the locations of the pixels in y in an identical manner
+    randomly flips, rotates, and zooms x and y in identical fashion
+    randomly adjusts the brightness and contrast of x
     """
-    assert generator is not None
-    seeds = generator.uniform_full_int([3], dtype=tf.dtypes.uint64)
+    # save shapes to explicitly set the shape of the outputs
+    x_shape = tf.shape(x)
+    y_shape = tf.shape(y)
 
-    augmenter = tf.keras.Sequential([
-        preprocessing.RandomFlip("horizontal_and_vertical", seed=seeds[0]),
-        preprocessing.RandomRotation(0.2, seed=seeds[1]),
-        preprocessing.RandomZoom((-0.2, 0.2), seed=seeds[2])
-    ])
+    if len(y_shape) == 3: # add dummy channel dimension, removed later with squeeze
+        y = tf.reshape(y, tf.concat([y_shape, [1]], -1))
+        n_y_bands = 1
+    else:
+        n_y_bands = y_shape[-1]
 
-    new_x = augmenter(x, training=True)
-    new_y = augmenter(y, training=True)
-    new_args = tuple([augmenter(x, training=True) for x in args])
+    # cast y to same type as x before concat, undone before returning
+    y_type = y.dtype
+    y = tf.cast(y, x.dtype)
 
-    return new_x, new_y, new_args
+    # stack x and y before augmenting so that pixels in both have their
+    # locations changed in an indentical manner
+    xy = augmenter(tf.concat([x, y], -1), training=True)
+
+    # split the combined x and y
+    new_x = xy[:, :, :, :-n_y_bands]
+    new_y = tf.cast(tf.squeeze(xy[:, :, :, -n_y_bands:]), y_type)
+
+    g = tf.random.get_global_generator()
+    seed = g.uniform_full_int((2,), tf.dtypes.int32)
+
+    # randomly adjust the brightness and contrast of x
+    new_x = tf.image.stateless_random_contrast(
+        tf.image.stateless_random_brightness(new_x, 0.5, seed=seed),
+        0.1, 0.5, seed=seed
+    )
+
+    # explicit reshape to avoid
+    # ValueError: as_list() is not defined on an unknown TensorShape.
+    # which is thrown by model.fit
+    new_x = tf.reshape(x, x_shape)
+    new_y = tf.reshape(y, y_shape)
+    return  new_x, new_y
 
 
 def get_dataset(patterns, shape, image_bands, annotation_bands,
                 combine=None, batch_size=64, filters=True, cache=False,
                 shuffle=False, repeat=False, prefetch=False,
-                burn_age_function=None):
+                burn_age_function=None, augment=False):
     """
     Create a TFRecord dataset.
 
@@ -289,11 +317,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     dataset = dataset.batch(batch_size)
 
     if augment:
-        g = tf.random.Generator.from_non_deterministic_state()
-        dataset = dataset.map(
-            lambda x, y, *args: augment_data(x, y, *args, generator=g),
-            num_parallel_calls=AUTOTUNE
-        )
+        dataset = dataset.map(augment_data)
 
     if repeat:
         dataset = dataset.repeat()
