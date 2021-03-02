@@ -425,6 +425,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     return output
 
 if __name__ == '__main__':
+    import visualize as Visualize
     params = {
         'bucket': '/home/rylan/school/historicalFiresQC/',
         'data_folder': 'data',
@@ -438,4 +439,6 @@ if __name__ == '__main__':
         'load_model': False,
         'store_predictions': False
     }
-    main(**params)
+    output = main(**params)
+    Visualize.visualize(output['train_dataset'], num=20)
+
