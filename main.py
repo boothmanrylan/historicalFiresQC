@@ -11,6 +11,11 @@ import assessment as Assessment
 
 pd.options.display.max_columns = 15
 
+valid_annotation_types = ['level_slice', 'bounding_box']
+valid_outputs = ['all', 'burn_age', 'burn']
+valid_loss_functions = ['basic', 'weighted', 'reference_point', 'no_burn_edge']
+valid_bafs = ['scale', 'log', 'sigmoid', None]
+
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          model_folder='historicalFiresModels', annotation_type='level_slice',
          output='all', shape=(128, 128), kernel=128, batch_size=100,
@@ -22,11 +27,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
     bad_arg = 'Invalid choice for argument'
-    assert annotation_type in ['level_slice', 'bounding_box'], bad_arg
-    assert output in ['all', 'burn_age', 'burn'], bad_arg
-    assert (loss_function in
-            ['basic', 'weighted', 'reference_point', 'no_burn_edge'], bad_arg)
-    assert burn_age_function in ['scale', 'log', 'sigmoid', None], bad_arg
+    assert annotation_type in valid_annotation_types, bad_arg
+    assert output in valid_outputs, bad_arg
+    assert loss_function in valid_loss_functions, bad_arg
+    assert burn_age_function in valid_bafs, bad_arg
 
     # =========================================================
     # SET THE PATHS TO THE DATA AND MODELS
@@ -301,8 +305,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             loss_fn = Model.reference_point_loss(base_loss_fn, **args)
         elif loss_function == 'no_burn_edge':
             loss_fn = Model.no_burn_edge_loss(base_loss_fn, **args)
-        else:
+        elif loss_function == 'basic':
             loss_fn = Model.basic_loss(base_loss_fn, **args)
+        else:
+            raise ValueError(f'bad loss function: {loss_function}')
 
         if output == 'burn_age':
             metrics = ['mse']
