@@ -111,6 +111,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
 
     if output == 'burn_age':
         train_filter = Data.filter_all_max_burn_age
+    elif output == 'burn':
+        train_filter = lambda image, annot: Data.filter_no_x(1, image, annot)
     else:
         train_filter = Data.filter_no_burnt
 
@@ -282,9 +284,6 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         if output == 'burn_age':
             base_loss_fn = tf.keras.losses.MAE
             args = {}
-        elif output == 'burn':
-            base_loss_fn = tf.keras.losses.binary_crossentropy
-            args = {'from_logits': True}
         else:
             base_loss_fn = tf.keras.losses.sparse_categorical_crossentropy
             args = {'from_logits': True}
@@ -471,7 +470,9 @@ if __name__ == '__main__':
         'train_model': True,
         'load_model': False,
         'store_predictions': False,
-        'loss_function': 'no_burn_edge'
+        'loss_function': 'no_burn_edge',
+        'output': 'burn',
+        'augment_data': False
     }
     output = main(**params)
     Visualize.visualize(output['train_dataset'], num=20)
