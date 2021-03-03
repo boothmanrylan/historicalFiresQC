@@ -119,6 +119,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             annotation_bands.append('lsliceBurnEdges')
         else:
             annotation_bands.append('bboxBurnEdges')
+    elif loss_function == 'reference_point': # add reference points
+        annotation_bands.append('referencePoints')
 
     train_dataset = Data.get_dataset(
         patterns=train_pattern, shape=shape,
@@ -130,6 +132,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     )
 
     if loss_function == 'no_burn_edge': # remove the burn edge mask
+        annotation_bands = annotation_bands[:-1]
+    elif loss_function == 'reference_point': # remove reference points
         annotation_bands = annotation_bands[:-1]
 
     # TODO NOW: out of image burn age doens't make sense 0 === most burned
