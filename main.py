@@ -122,7 +122,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         combine=combine,
         batch_size=batch_size, filters=train_filter, shuffle=True,
         repeat=True, prefetch=True, cache=True,
-        burn_age_function=baf, augment=True
+        burn_age_function=baf, augment=augment_data
     )
 
     if loss_function == 'no_burn_edge': # remove the burn edge mask
