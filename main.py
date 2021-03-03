@@ -17,7 +17,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          stack_image=False, include_previous_burn_age=False,
          burn_age_function='scale', learning_rate=1e-4, epochs=100,
          steps_per_epoch=100, train_model=False, load_model=True,
-         loss_function='basic', store_predictions=False):
+         loss_function='basic', store_predictions=False, augment_data=True):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -176,6 +176,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Output': pretty(output),
         'Learning Rate': pretty(learning_rate),
         'Burn Age Function': pretty(burn_age_function),
+        'Augment Data': augment_data
     }
 
     columns = ['Model', 'Date', 'Epochs'] + list(model_parameters.keys())
@@ -188,8 +189,18 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     except FileNotFoundError:
         metadata = pd.DataFrame(columns=columns)
 
+    try:
+        all_models = metadata[model_parameters.keys()]
+    except KeyError: # new model parameter added
+        # add missing parameters with None to all previous models
+        missing = [x for x in model_parameters.keys()
+                   if x not in metadata.columns]
+        print(f'Updating metadata to include new parameters: {missing}')
+        for elem in missing:
+            metadata[elem] = None
+        all_models = metadata[model_parameters.keys()]
+
     # check if a model with these same parameters has already been trained
-    all_models = metadata[model_parameters.keys()]
     prev_models = all_models[(all_models.values == current_model.values).all(1)]
     if not prev_models.empty:
         index = prev_models.index[0]
