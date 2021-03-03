@@ -126,5 +126,5 @@ def no_burn_edge_loss(loss_fn, **args):
         assert true.shape[-1] == 2
         labels, burn_edge_mask = true[:, :, :, 0], true[:, :, :, 1]
         base_loss = loss_fn(labels, pred, **args)
-        return base_loss * burn_edge_mask
+        return base_loss * tf.cast(burn_edge_mask, base_loss.dtype)
     return _no_burn_edge_loss
