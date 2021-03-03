@@ -112,3 +112,19 @@ def basic_loss(loss_fn, **args):
     def _basic_loss(true, pred):
         return loss_fn(true, pred, **args)
     return _basic_loss
+
+def no_burn_edge_loss(loss_fn, **args):
+    '''
+    dont use edges of burned regions when computing the loss.
+    expects true values to have shape (x, y, 2) for input images with shape
+    (x, y) true[:, :, 0] should be the true classification/regression values
+    and true[:, :, 1] should be a matrix of 0s and 1s that is 0 on all the burn
+    edges. args get pased to loss_fn.
+    returns (loss_fn(true[:, :, 0], pred) * true[:, :, 1])
+    '''
+    def _no_burn_edge_loss(true, pred):
+        assert true.shape[-1] == 2
+        labels, burn_edge_mask = true[:, :, :, 0], true[:, :, :, 1]
+        base_loss = loss_fn(labels, pred, **args)
+        return base_loss * burn_edge_mask
+    return _no_burn_edge_loss

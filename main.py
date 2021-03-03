@@ -24,7 +24,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     bad_arg = 'Invalid choice for argument'
     assert annotation_type in ['level_slice', 'bounding_box'], bad_arg
     assert output in ['all', 'burn_age', 'burn'], bad_arg
-    assert loss_function in ['basic', 'weighted', 'reference_point'], bad_arg
+    assert (loss_function in
+            ['basic', 'weighted', 'reference_point', 'no_burn_edge'], bad_arg)
     assert burn_age_function in ['scale', 'log', 'sigmoid', None], bad_arg
 
     # =========================================================
@@ -109,6 +110,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     else:
         train_filter = Data.filter_no_burnt
 
+    if loss_function == 'no_burn_edge': # add burn edge mask to annotationS
+        if annotation_type == 'level_slice':
+            annotation_bands.append('lsliceBurnEdges')
+        else:
+            annotation_bands.append('bboxBurnEdges')
+
     train_dataset = Data.get_dataset(
         patterns=train_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=annotation_bands,
@@ -117,6 +124,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         repeat=True, prefetch=True, cache=True,
         burn_age_function=baf, augment=True
     )
+
+    if loss_function == 'no_burn_edge': # remove the burn edge mask
+        annotation_bands = annotation_bands[:-1]
 
     # TODO NOW: out of image burn age doens't make sense 0 === most burned
 
@@ -278,6 +288,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             # TODO: add ability to make this weighted or not
             # TODO: add ability to set alpha and beta here
             loss_fn = Model.reference_point_loss(base_loss_fn, **args)
+        elif loss_function == 'no_burn_edge':
+            loss_fn = Model.no_burn_edge_loss(base_loss_fn, **args)
         else:
             loss_fn = Model.basic_loss(base_loss_fn, **args)
 
@@ -437,7 +449,8 @@ if __name__ == '__main__':
         'steps_per_epoch': 1,
         'train_model': True,
         'load_model': False,
-        'store_predictions': False
+        'store_predictions': False,
+        'loss_function': 'no_burn_edge'
     }
     output = main(**params)
     Visualize.visualize(output['train_dataset'], num=20)
