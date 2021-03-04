@@ -288,10 +288,13 @@ def accuracy_assessment(matrix, labels):
 
     return df
 
-def burn_age_accuracy_assessment(model, dataset, max_burn_age, kernel):
-    matrix = burn_age_reference_accuracy(model, dataset, max_burn_age, kernel)
-    return accuracy_assessment(matrix, ['Not Burnt', 'Burnt'])
-
-def classification_accuracy_assessment(model, dataset, labels):
-    matrix = reference_accuracy(model, dataset, len(labels))
+def assessment(model, dataset, output, **args):
+    if output == 'burn_age':
+        matrix = burn_age_reference_accuracy(
+            model, dataset, args['max_burn_age'], args['kernel']
+        )
+        labels = ['Not Burnt', 'Burnt']
+    else:
+        matrix = reference_accuracy(model, dataset, len(args['labels']))
+        labels = args['labels']
     return accuracy_assessment(matrix, labels)

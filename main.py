@@ -22,7 +22,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          stack_image=False, include_previous_burn_age=False,
          burn_age_function='scale', learning_rate=1e-4, epochs=100,
          steps_per_epoch=100, train_model=False, load_model=True,
-         loss_function='basic', store_predictions=False, augment_data=True):
+         loss_function='basic', store_predictions=False, augment_data=True,
+         assess_model=False):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -332,17 +333,13 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ASSESS THE MODEL
     # ================================================================
     assessment_path = os.path.join(model_path, 'assessment.csv')
-    if train_model:
+    acc_assessment = None
+    if train_model and assess_model:
         print('Assessing model performance...')
-        if output == 'burn_age':
-            acc_assessment = Assessment.burn_age_accuracy_assessment(
-                model, ref_point_dataset, baf(3650), kernel
-            )
-        else:
-            acc_assessment = Assessment.classification_accuracy_assessment(
-                model, ref_point_dataset, labels
-            )
-
+        acc_assessment = Assessment.assessment(
+            model, ref_point_dataset, output, max_burn_age=baf(3650),
+            kernel=kernel, labels=labels
+        )
         print(f'Saving model assessment to {assessment_path}.')
         acc_assessment.to_csv(assessment_path)
 
@@ -352,7 +349,19 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     else:
         if load_model:
             print(f'Loading previous assessment from {assessment_path}')
-            acc_assessment = pd.read_csv(assessment_path, index_col=0)
+            try:
+                acc_assessment = pd.read_csv(assessment_path, index_col=0)
+            except FileNotFoundError:
+                print(f'Assessment file {assessment_path} missing.')
+                if assess_model:
+                    print('Redoing model assessment.')
+                    acc_assessment = Assessment.assessment(
+                        model, ref_point_dataset, output,
+                        max_burn_age=baf(3650), kernel=kernel, labels=labels
+                    )
+                    print(f'Saving model assessment to {assessment_path}')
+                    acc_assessment.to_csv(assessment_path)
+                    print(f'Done assessing model.\n')
 
     # =================================================================
     # UPLOAD PREDICTIONS TO EARTH ENGINE
@@ -467,13 +476,14 @@ if __name__ == '__main__':
         'batch_size': 8,
         'epochs': 2,
         'steps_per_epoch': 1,
-        'train_model': True,
-        'load_model': False,
+        'train_model': False,
+        'load_model': True,
         'store_predictions': False,
         'loss_function': 'no_burn_edge',
         'output': 'burn',
-        'augment_data': False
+        'augment_data': False,
+        'assess_model': False
     }
     output = main(**params)
-    Visualize.visualize(output['train_dataset'], num=20)
+    Visualize.visualize(output['train_dataset'], output['model'], num=20)
 
