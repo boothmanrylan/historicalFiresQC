@@ -16,6 +16,13 @@ valid_outputs = ['all', 'burn_age', 'burn']
 valid_loss_functions = ['basic', 'weighted', 'reference_point', 'no_burn_edge']
 valid_bafs = ['scale', 'log', 'sigmoid', None]
 
+# when adding new model parameters that were not previously being tracked
+# add them here with their that all previously trained models will have so that
+# we can still compare them to newer runs
+default_values = {
+    'augment_data': False
+}
+
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          model_folder='historicalFiresModels', annotation_type='level_slice',
          output='all', shape=(128, 128), kernel=128, batch_size=100,
@@ -203,12 +210,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     try:
         all_models = metadata[model_parameters.keys()]
     except KeyError: # new model parameter added
-        # add missing parameters with None to all previous models
+        # add missing parameters with default value for that parameter
         missing = [x for x in model_parameters.keys()
                    if x not in metadata.columns]
         print(f'Updating metadata to include new parameters: {missing}')
         for elem in missing:
-            metadata[elem] = None
+            metadata[elem] = default_values[elem]
         all_models = metadata[model_parameters.keys()]
 
     # check if a model with these same parameters has already been trained
@@ -474,12 +481,12 @@ if __name__ == '__main__':
         'shape': (128, 128),
         'kernel': 32,
         'batch_size': 8,
-        'epochs': 2,
-        'steps_per_epoch': 1,
-        'train_model': False,
-        'load_model': True,
+        'epochs': 25,
+        'steps_per_epoch': 25,
+        'train_model': True,
+        'load_model': False,
         'store_predictions': False,
-        'loss_function': 'no_burn_edge',
+        'loss_function': 'basic',
         'output': 'burn',
         'augment_data': False,
         'assess_model': False
