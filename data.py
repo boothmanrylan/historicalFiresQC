@@ -119,11 +119,16 @@ def parse(example, shape, image_bands, annotation_bands, combine=None,
 
     annotation = _stack_bands(parsed, new_annotation_bands, annot_dtype)
 
-    if combine is not None:
+    if combine is not None: # combine should only be applied to the first band
         for original, change in combine:
             original = tf.cast(original, annotation.dtype)
             change = tf.cast(change, annotation.dtype)
-            annotation = tf.where(annotation == original, change, annotation)
+            if len(tf.shape(annotation)) > 2:
+                bands = tf.split(annotation, [1, annotation.shape[-1] - 1], -1)
+                combined = tf.where(bands[0] == original, change, bands[0])
+                annotation = tf.concat([combined, bands[1]], -1)
+            else:
+                annotation = tf.where(annotation == original, change, annotation)
 
     if lslice_burn_age is not None:
         if annotation is not None:
