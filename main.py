@@ -467,7 +467,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'assessment': acc_assessment,
         'data_folder': data_folder,
         'model_folder': model_path,
-        'model_number': model_number
+        'model_number': model_number,
+        'burn_age_function': baf
     }
 
     return output
@@ -481,16 +482,30 @@ if __name__ == '__main__':
         'shape': (128, 128),
         'kernel': 32,
         'batch_size': 8,
-        'epochs': 25,
+        'epochs': 2,
         'steps_per_epoch': 25,
         'train_model': True,
         'load_model': False,
         'store_predictions': False,
         'loss_function': 'basic',
-        'output': 'burn',
+        'output': 'all',
         'augment_data': False,
-        'assess_model': False
+        'assess_model': False,
+        'stack_image': False,
+        'include_previous_burn_age': False
     }
     output = main(**params)
-    Visualize.visualize(output['train_dataset'], output['model'], num=20)
+    max_annot=None
+    if params['output'] == 'burn_age':
+        max_annot = output['burn_age_function'](3650)
+    elif params['output'] == 'burn':
+        max_annot = 1
+
+    Visualize.visualize(
+        output['train_dataset'], output['model'], num=20,
+        stacked_image=params['stack_image'],
+        include_prev_burn_age=params['include_previous_burn_age'],
+        include_prev_class=False, max_annot=max_annot,
+        max_burn_age=output['burn_age_function'](3650)
+    )
 
