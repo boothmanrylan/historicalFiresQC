@@ -70,13 +70,13 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
             plot_offset += 1
             band_offset += 4
         if include_prev_burn_age:
-            burn_age = image[:, :, band_offset:band_offset + 1]
+            burn_age = np.squeeze(image[:, :, band_offset:band_offset + 1])
             ax[plot_offset].imshow(burn_age, vmin=0, vmax=max_burn_age)
             ax[plot_offset].set_title('Previous Burn Age')
             plot_offset += 1
             band_offset += 1
         if include_prev_class:
-            prev_class = image[:, :, band_offset:band_offset + 1]
+            prev_class = np.squeeze(image[:, :, band_offset:band_offset + 1])
             ax[plot_offset].imshow(prev_class, cmap=class_cmap, norm=norm_cmap,
                                    interpolation='nearest')
             ax[plot_offset].set_title('Previous Classification')
