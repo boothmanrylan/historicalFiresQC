@@ -188,6 +188,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     def pretty(obj):
         if isinstance(obj, str):
             output = obj.replace('_', ' ').title()
+        elif obj is None:
+            output = 'None'
         else:
             output = obj
         return output
