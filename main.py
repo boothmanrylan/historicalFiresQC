@@ -20,17 +20,18 @@ valid_bafs = ['scale', 'log', 'sigmoid', None]
 # add them here with their that all previously trained models will have so that
 # we can still compare them to newer runs
 default_values = {
-    'augment_data': False
+    'Augment Data': False,
+    'Use Previous Classification': False
 }
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          model_folder='historicalFiresModels', annotation_type='level_slice',
          output='all', shape=(128, 128), kernel=128, batch_size=100,
          stack_image=False, include_previous_burn_age=False,
-         burn_age_function='scale', learning_rate=1e-4, epochs=100,
-         steps_per_epoch=100, train_model=False, load_model=True,
-         loss_function='basic', store_predictions=False, augment_data=True,
-         assess_model=False):
+         include_previous_class=False, burn_age_function='scale',
+         learning_rate=1e-4, epochs=100, steps_per_epoch=100,
+         train_model=False, load_model=True, loss_function='basic',
+         store_predictions=False, augment_data=True, assess_model=False):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -95,6 +96,11 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             image_bands.append('prevLSliceBurnAge')
         else:
             image_bands.append('prevBBoxBurnAge')
+    if include_previous_class:
+        if annotation_type == 'level_slice':
+            image_bands.append('prevLSliceClass')
+        else:
+            image_bands.append('prevBBoxClass')
     channels = len(image_bands)
 
     print(f'Using {image_bands} as input to model.')
@@ -191,6 +197,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Loss Function': pretty(loss_function),
         'Stacked Images': pretty(stack_image),
         'Use Previous Burn Age': pretty(include_previous_burn_age),
+        'Use Previous Classification': pretty(include_previous_class),
         'Output': pretty(output),
         'Learning Rate': pretty(learning_rate),
         'Burn Age Function': pretty(burn_age_function),
@@ -492,7 +499,8 @@ if __name__ == '__main__':
         'augment_data': False,
         'assess_model': False,
         'stack_image': False,
-        'include_previous_burn_age': False
+        'include_previous_burn_age': False,
+        'include_previous_class': False
     }
     output = main(**params)
     max_annot=None
@@ -505,7 +513,7 @@ if __name__ == '__main__':
         output['train_dataset'], output['model'], num=20,
         stacked_image=params['stack_image'],
         include_prev_burn_age=params['include_previous_burn_age'],
-        include_prev_class=False, max_annot=max_annot,
-        max_burn_age=output['burn_age_function'](3650)
+        include_prev_class=params['include_previous_class'],
+        max_annot=max_annot, max_burn_age=output['burn_age_function'](3650)
     )
 

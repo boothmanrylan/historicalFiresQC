@@ -7,7 +7,8 @@ all_bands = [
     'B4', 'B5', 'B6', 'B7', 'OldB4', 'OldB5', 'OldB6', 'OldB7',
     'dateDiff', 'prevLSliceBurnAge', 'prevBBoxBurnAge', 'lsliceClass',
     'bboxClass', 'lsliceBurnAge', 'bboxBurnAge', 'lsliceBurnEdges',
-    'bboxBurnEdges', 'referencePoints', 'refBurnAge'
+    'bboxBurnEdges', 'referencePoints', 'refBurnAge', 'prevLSliceClass',
+    'prevBBoxClass'
 ]
 
 def filter_blank(image, _):
@@ -142,46 +143,35 @@ def parse(example, shape, image_bands, annotation_bands, combine=None,
         else:
             annotation = tf.squeeze(bbox_burn_age)
 
-    # dateDiff and burn age bands must be scaled differently than MSS bands
-    # therefore add them each separately to the image
-    date_diff = _add_separately(
-        'dateDiff', image_bands, parsed, shape, lambda x: x / 1071
-    )
+    # some bands must be scaled differently than MSS band add them separately
+    separate_band_names = {
+        'dateDiff': lambda x: x / 1071,
+        'prevBBoxBurnAge': burn_age_function,
+        'prevLSliceBurnAge': burn_age_function,
+        'prevLSliceClass': lambda x: x,
+        'prevBBoxClass': lambda x: x
+    }
 
-    prev_bbox_burn_age = _add_separately(
-        'prevBBoxBurnAge', image_bands, parsed, shape, burn_age_function
-    )
-
-    prev_lslice_burn_age = _add_separately(
-        'prevLSliceBurnAge', image_bands, parsed, shape, burn_age_function
-    )
+    separate_bands = [
+        _add_separately(band_name, image_bands, parsed, shape, scale_fn)
+        for band_name, scale_fn in separate_band_names.items()
+    ]
 
     # ensure the bands added separately are not added twice
     new_image_bands = image_bands.copy()
-    for band in ['dateDiff', 'prevBBoxBurnAge', 'prevLSliceBurnAge']:
+    for band in separate_band_names:
         if band in image_bands:
             new_image_bands.remove(band)
 
     image = _stack_bands(parsed, new_image_bands, tf.float32)
     image /= 255.0 # MSS data is unsigned 8 bit integer therefore 255 is max
 
-    if date_diff is not None:
-        if image is not None:
-            image = tf.concat([image, date_diff], -1)
-        else:
-            image = tf.squeeze(date_diff)
-
-    if prev_bbox_burn_age is not None:
-        if image is not None:
-            image = tf.concat([image, prev_bbox_burn_age], -1)
-        else:
-            image = tf.squeeze(prev_bbox_burn_age)
-
-    if prev_lslice_burn_age is not None:
-        if image is not None:
-            image = tf.concat([image, prev_lslice_burn_age], -1)
-        else:
-            image = tf.squeeze(prev_lslice_burn_age)
+    for band in separate_bands:
+        if band is not None:
+            if image is not None:
+                image = tf.concat([image, band], -1)
+            else:
+                image = tf.squeeze(band)
 
     return image, annotation
 
