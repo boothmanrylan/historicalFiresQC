@@ -231,11 +231,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     prev_models = all_models[(all_models.values == current_model.values).all(1)]
     if not prev_models.empty:
         index = prev_models.index[0]
-        model_number = prev_models.index[0]
-        print(f'Found model {model_number:05d} with matching parameters.')
         model_parameters = metadata.to_dict('records')[index]
         metadata = metadata.drop(index)
         model_number = model_parameters['Model']
+        print(f'Found model {model_number:05d} with matching parameters.')
         if train_model:
             if load_model:
                 model_parameters['Epochs'] += epochs
@@ -243,7 +242,11 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
                 model_parameters['Epochs'] = epochs
     else:
         print('No previous model with the same parameters was found.')
-        model_number = metadata.shape[0]
+        if metadata.shape[0] > 0:
+            model_number = metadata['Model'].max() + 1
+        else:
+            model_number = metadata.shape[0]
+        assert model_number not in metadata['Model']
         model_parameters['Model'] = model_number
         if train_model:
             model_parameters['Epochs'] = epochs
