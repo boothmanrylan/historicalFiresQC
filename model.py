@@ -1,5 +1,7 @@
 import tensorflow as tf
+import numpy as np
 from tensorflow_examples.models.pix2pix import pix2pix
+from tensorflow.keras import backend as K
 
 def build_unet_model(input_shape, classes):
     """
@@ -77,7 +79,7 @@ def reference_point_loss(loss_fn, weights=None, alpha=1.0, beta=1.0, **args):
     If weights are given, they are used to weight the term in the loss function
     based on the default labels.
 
-    Applies loss_fn separately to bath (labels, pred) and (ref_points, pred).
+    applies loss_fn separately to bath (labels, pred) and (ref_points, pred).
     Returns the sum of both losses weighted by alpha and beta:
         (alpha * loss_fn(labels, pred)) + (beta * loss_fn(ref_points, pred))
     """
@@ -128,3 +130,64 @@ def no_burn_edge_loss(loss_fn, **args):
         base_loss = loss_fn(labels, pred, **args)
         return base_loss * tf.cast(burn_edge_mask, base_loss.dtype)
     return _no_burn_edge_loss
+
+class MeanIoUFromLogits(tf.keras.metrics.Metric):
+    def __init__(self, num_classes, name=None, dtype=None):
+        super().__init__(name=name, dtype=dtype)
+        self.num_classes = num_classes
+
+        self.total_cm = self.add_weight(
+            'total_confusion_matrix',
+            shape=(num_classes, num_classes),
+            initializer=tf.zeros_initializer,
+            dtype=tf.float64)
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_true = tf.cast(y_true, self._dtype)
+        y_pred = tf.cast(y_pred, self._dtype)
+
+        # convert from logits
+        y_pred = tf.math.argmax(y_pred, axis=-1)
+
+        if y_pred.shape.ndims > 1:
+            y_pred = tf.reshape(y_pred, [-1])
+
+        if y_true.shape.ndims > 1:
+            y_true = tf.reshape(y_true, [-1])
+
+        if sample_weight is not None:
+            sample_weight = tf.cast(sample_weight, self._dtype)
+            if sample_weight.shape.ndims > 1:
+                sample_weight = tf.reshape(sample_weight, [-1])
+
+        current_cm = tf.math.confusion_matrix(
+            y_true, y_pred, self.num_classes, weights=sample_weight,
+            dtype=tf.float64)
+        return self.total_cm.assign_add(current_cm)
+
+    def result(self):
+        sum_over_row = tf.cast(
+            tf.reduce_sum(self.total_cm, axis=0), self._dtype)
+        sum_over_col = tf.cast(
+            tf.reduce_sum(self.total_cm, axis=1), self._dtype)
+        true_positives = tf.cast(
+            tf.linalg.tensor_diag_part(self.total_cm), self._dtype)
+
+        denominator = sum_over_row + sum_over_col - true_positives
+
+        num_valid_entries = tf.reduce_sum(
+            tf.cast(tf.math.not_equal(denominator, 0), self._dtype))
+
+        iou = tf.math.divide_no_nan(true_positives, denominator)
+
+        return tf.math.divide_no_nan(
+            tf.reduce_sum(iou, name='mean_iou'), num_valid_entries)
+
+    def reset_states(self):
+        return K.set_value(
+            self.total_cm, np.zeros((self.num_classes, self.num_classes)))
+
+    def get_config(self):
+        config = {'num_classes': self.num_classes}
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(config.items()))
