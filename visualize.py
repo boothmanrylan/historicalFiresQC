@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
 colours = [
-    (0, 0,    0), # white for clouds
-    (1, 1,    1), # black for no data
+    (0, 0,    0), # black for no data
+    (1, 1,    1), # white for clouds
     (0, 0,    1), # blue for water
     (0, 0.5,  0), # green for land (non-burnt)
     (1, 0,    0), # red for new burns
@@ -13,8 +13,17 @@ colours = [
 ]
 bounds = [0, 1, 2, 3, 4, 5, 6]
 
+normalized_colours = [
+    (0, 0,   0), # black for no data
+    (0, 0.5, 0), # green for land (non-burnt)
+    (1, 0,   0), # red for burnS
+]
+normalized_bounds = [0, 1, 2, 3]
+
 class_cmap = ListedColormap(colours)
 class_norm = BoundaryNorm(bounds, class_cmap.N)
+normalized_class_cmap = ListedColormap(normalized_colours)
+normalized_class_norm = BoundaryNorm(normalized_bound, normalized_class_cmap.N)
 
 def false_colour_image(image):
     """
@@ -24,8 +33,8 @@ def false_colour_image(image):
     contains two images of the same scene stacked on top of each other, return
     false colour images of both.
     """
-    # input image must be a single MSS image
-    assert image.ndim == 3 and image.shape[-1] == 4
+    # input image must be a single MSS image with band order B4, B5, B6, B7,...
+    assert image.ndim == 3
 
     fci = np.stack([
         image[:, :, 3],
@@ -44,7 +53,7 @@ def calculate_vmin_vmax(image, alpha=0.9):
 
 def visualize(dataset, model=None, num=20, stacked_image=False,
               include_prev_burn_age=False, include_prev_class=False,
-              max_annot=None, max_burn_age=3650):
+              max_annot=None, max_burn_age=3650, normalized_data=False):
     for images, annotations in dataset.take(num):
         image = tf.squeeze(images[0]).numpy()
 
@@ -84,8 +93,12 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
             band_offset += 1
 
         vmax, vmin = None, None
-        cmap = class_cmap
-        norm = class_norm
+        if normalized_data:
+            cmap = normalized_class_cmap
+            norm = normalized_class_norm
+        else:
+            cmap = class_cmap
+            norm = class_norm
         if max_annot is not None:
             vmax = max_annot
             vmin = 0
