@@ -32,7 +32,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          include_previous_class=False, burn_age_function='scale',
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=True, loss_function='basic',
-         store_predictions=False, augment_data=True, assess_model=False):
+         store_predictions=False, augment_data=True, assess_model=False,
+         include_tca=False):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -58,14 +59,25 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     else:
         normalized_data = False
 
+    if include_tca:
+        try:
+            assert normalized_data
+        except AssertionError as E:
+            raise ValueError('TCA only exists in normalized data') from E
+
     # ==========================================================
     # SET THE BANDS TO USE AS OUTPUT FOR THE MODEL
     # ==========================================================
     print('Creating datasets...')
 
-    classes = 5 # none, cloud, water, land, burn
-    labels = ['None', 'Cloud', 'Water', 'Land', 'Burn']
-    combine = [(5, 4)] # merge new burns and old burn into one class
+    if normalized_data:
+        classes = 3 # None, land, burn
+        labels = ['None', 'Land', 'Burn']
+        combine = None
+    else:
+        classes = 5 # none, cloud, water, land, burn
+        labels = ['None', 'Cloud', 'Water', 'Land', 'Burn']
+        combine = [(5, 4)] # merge new burns and old burn into one class
 
     if annotation_type == 'level_slice':
         annotation_bands = ['lsliceClass']
@@ -85,7 +97,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         labels = ['Not Burnt', 'Burnt']
         classes = 2 # predicting burn vs not burn
         # convert all non burn classes to 0 and all burn classes to 1
-        combine = [(1, 0), (2, 0), (3, 0), (4, 1), (5, 1)]
+        if normalized_data:
+            combine = [(1, 0), (2, 1)]
+        else:
+            combine = [(1, 0), (2, 0), (3, 0), (4, 1), (5, 1)]
 
     print(f'Using {annotation_bands} as ground truth.')
 
@@ -93,9 +108,13 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # SET THE BANDS TO USE AS INPUT TO THE MODEL
     # ==========================================================
     image_bands = ['B4', 'B5', 'B6', 'B7']
+    if include_tca:
+        image_bands.append('TCA')
 
     if stack_image:
         image_bands.extend(['OldB4', 'OldB5', 'OldB6', 'OldB7'])
+        if include_tca:
+            image_bands.append('TCA')
 
     if include_previous_burn_age:
         if annotation_type == 'level_slice':
