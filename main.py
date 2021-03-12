@@ -21,7 +21,8 @@ valid_bafs = ['scale', 'log', 'sigmoid', None]
 # we can still compare them to newer runs
 default_values = {
     'Augment Data': False,
-    'Use Previous Classification': False
+    'Use Previous Classification': False,
+    'Normalized Data': False
 }
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
@@ -51,6 +52,11 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     train_pattern = os.path.join(data_folder, 'train*.tfrecord.gz')
     val_pattern = os.path.join(data_folder, 'val*.tfrecord.gz')
     # test_pattern = os.path.join(data_folder, 'test*.tfrecord.gz')
+
+    if 'NormalizedData' in data_folder:
+        normalized_data = True
+    else:
+        normalized_data = False
 
     # ==========================================================
     # SET THE BANDS TO USE AS OUTPUT FOR THE MODEL
@@ -203,7 +209,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Output': pretty(output),
         'Learning Rate': pretty(learning_rate),
         'Burn Age Function': pretty(burn_age_function),
-        'Augment Data': augment_data
+        'Augment Data': augment_data,
+        'Normalized Data': pretty(normalized_data)
     }
 
     columns = ['Model', 'Date', 'Epochs'] + list(model_parameters.keys())
