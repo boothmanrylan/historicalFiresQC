@@ -23,7 +23,7 @@ normalized_bounds = [0, 1, 2, 3]
 class_cmap = ListedColormap(colours)
 class_norm = BoundaryNorm(bounds, class_cmap.N)
 normalized_class_cmap = ListedColormap(normalized_colours)
-normalized_class_norm = BoundaryNorm(normalized_bound, normalized_class_cmap.N)
+normalized_class_norm = BoundaryNorm(normalized_bounds, normalized_class_cmap.N)
 
 def false_colour_image(image):
     """
@@ -54,6 +54,18 @@ def calculate_vmin_vmax(image, alpha=0.9):
 def visualize(dataset, model=None, num=20, stacked_image=False,
               include_prev_burn_age=False, include_prev_class=False,
               max_annot=None, max_burn_age=3650, normalized_data=False):
+
+    if normalized_data:
+        cmap = normalized_class_cmap
+        norm = normalized_class_norm
+    else:
+        cmap = class_cmap
+        norm = class_norm
+
+    if max_annot is not None:
+        cmap = 'gray'
+        norm = None
+
     for images, annotations in dataset.take(num):
         image = tf.squeeze(images[0]).numpy()
 
@@ -86,24 +98,16 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
             band_offset += 1
         if include_prev_class:
             prev_class = np.squeeze(image[:, :, band_offset:band_offset + 1])
-            ax[plot_offset].imshow(prev_class, cmap=class_cmap, norm=norm_cmap,
+            ax[plot_offset].imshow(prev_class, cmap=cmap, norm=norm,
                                    interpolation='nearest')
             ax[plot_offset].set_title('Previous Classification')
             plot_offset += 1
             band_offset += 1
 
-        vmax, vmin = None, None
-        if normalized_data:
-            cmap = normalized_class_cmap
-            norm = normalized_class_norm
-        else:
-            cmap = class_cmap
-            norm = class_norm
+        vmin, vmax = None, None
         if max_annot is not None:
             vmax = max_annot
             vmin = 0
-            cmap = 'gray'
-            norm = None
 
         if annotations.ndim == 4:
             for i in range(annotations.shape[-1]):
