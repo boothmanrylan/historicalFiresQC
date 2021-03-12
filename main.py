@@ -151,9 +151,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     if output == 'burn_age':
         train_filter = Data.filter_all_max_burn_age
     elif output == 'burn':
-        train_filter = lambda image, annot: Data.filter_no_x(1, image, annot)
+        train_filter = lambda im, annot: Data.filter_no_x(1, im, annot)
     else:
-        train_filter = Data.filter_no_burnt
+        if normalized_data:
+            train_filter = lambda im, annot: Data.filter_no_x(2, im, annot)
+        else:
+            train_filter = Data.filter_no_burnt
 
     if loss_function == 'no_burn_edge': # add burn edge mask to annotationS
         if annotation_type == 'level_slice':
