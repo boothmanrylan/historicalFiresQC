@@ -361,8 +361,9 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         if output == 'burn_age':
             metrics = ['mse']
         else:
-            metrics = [Model.MeanIoUFromLogits(classes),
-                       tf.keras.metrics.SparseCategoricalAccuracy()]
+            metrics = ['accuracy']
+            # metrics = [Model.MeanIoUFromLogits(classes),
+            #            tf.keras.metrics.SparseCategoricalAccuracy()]
 
         model.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
 
