@@ -8,7 +8,7 @@ all_bands = [
     'dateDiff', 'prevLSliceBurnAge', 'prevBBoxBurnAge', 'lsliceClass',
     'bboxClass', 'lsliceBurnAge', 'bboxBurnAge', 'lsliceBurnEdges',
     'bboxBurnEdges', 'referencePoints', 'refBurnAge', 'prevLSliceClass',
-    'prevBBoxClass'
+    'prevBBoxClass', 'TCA', 'OldTCA'
 ]
 
 def filter_blank(image, _):
@@ -90,7 +90,7 @@ def _stack_bands(parsed_example, band_names, dtype):
 
 @tf.function
 def parse(example, shape, image_bands, annotation_bands, combine=None,
-          burn_age_function=None):
+          burn_age_function=None, default_scale_fn=lambda x: x / 255):
 
     used_bands = image_bands + annotation_bands
 
@@ -170,7 +170,7 @@ def parse(example, shape, image_bands, annotation_bands, combine=None,
             new_image_bands.remove(band)
 
     image = _stack_bands(parsed, new_image_bands, tf.float32)
-    image /= 255.0 # MSS data is unsigned 8 bit integer therefore 255 is max
+    image = default_scale_fn(image)
 
     for band in separate_bands:
         if band is not None:
@@ -268,7 +268,11 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     if not isinstance(annotation_bands, list):
         annotation_bands = [annotation_bands]
 
+    default_scale_fn = lambda x: x / 255
+
     if '*' in patterns[0]: # patterns need unix style file expansion
+        if 'NormalizedData' in patterns[0]: # normalized data is already scaled
+            default_scale_fn = lambda x: x
         files = tf.data.Dataset.list_files(patterns[0], shuffle=shuffle)
         for p in patterns[1:]:
             files = files.concatenate(
@@ -297,7 +301,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
         lambda x: parse(x, shape, image_bands, annotation_bands, combine,
-                        burn_age_function),
+                        burn_age_function, default_scale_fn),
         num_parallel_calls=AUTOTUNE
     )
 
