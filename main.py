@@ -54,10 +54,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     val_pattern = os.path.join(data_folder, 'val*.tfrecord.gz')
     # test_pattern = os.path.join(data_folder, 'test*.tfrecord.gz')
 
-    if 'NormalizedData' in data_folder:
-        normalized_data = True
-    else:
-        normalized_data = False
+    normalized_data = bool('NormalizedData' in data_folder)
 
     if include_tca:
         try:
@@ -249,8 +246,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         all_models = metadata[model_parameters.keys()]
     except KeyError: # new model parameter added
         # add missing parameters with default value for that parameter
-        missing = [x for x in model_parameters.keys()
-                   if x not in metadata.columns]
+        missing = [x for x in model_parameters if x not in metadata.columns]
         print(f'Updating metadata to include new parameters: {missing}')
         for elem in missing:
             metadata[elem] = default_values[elem]
@@ -365,7 +361,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         if output == 'burn_age':
             metrics = ['mse']
         else:
-            metrics = ['accuracy']
+            metrics = [tf.keras.metrics.MeanIoU(classes), 'accuracy']
 
         model.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
 
@@ -409,7 +405,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
                     )
                     print(f'Saving model assessment to {assessment_path}')
                     acc_assessment.to_csv(assessment_path)
-                    print(f'Done assessing model.\n')
+                    print('Done assessing model.\n')
 
     # =================================================================
     # UPLOAD PREDICTIONS TO EARTH ENGINE
@@ -536,18 +532,18 @@ if __name__ == '__main__':
         'include_previous_burn_age': False,
         'include_previous_class': False
     }
-    output = main(**params)
-    max_annot=None
+    test_result = main(**params)
     if params['output'] == 'burn_age':
-        max_annot = output['burn_age_function'](3650)
+        max_annot = test_result['burn_age_function'](3650)
     elif params['output'] == 'burn':
         max_annot = 1
+    else:
+        max_annot = None
 
     Visualize.visualize(
-        output['train_dataset'], output['model'], num=20,
+        test_result['train_dataset'], test_result['model'], num=20,
         stacked_image=params['stack_image'],
         include_prev_burn_age=params['include_previous_burn_age'],
         include_prev_class=params['include_previous_class'],
-        max_annot=max_annot, max_burn_age=output['burn_age_function'](3650)
+        max_annot=max_annot, max_burn_age=test_result['burn_age_function'](3650)
     )
-
