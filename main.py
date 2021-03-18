@@ -415,40 +415,46 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     if store_predictions:
         print(f'Storing predictions in {model_path}')
 
-        try:
-            result = subprocess.run(
-                ['gsutil', 'ls', data_folder],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                universal_newlines=True,
-                check=True
-            )
-        except subprocess.CalledProcessError as E:
-            print(E.stderr)
-            raise E
+        # try: 
+        #     result = subprocess.run(
+        #         ['gsutil', 'ls', data_folder],
+        #         stdout=subprocess.PIPE,
+        #         stderr=subprocess.PIPE,
+        #         universal_newlines=True,
+        #         check=True
+        #     )
+        # except subprocess.CalledProcessError as E:
+        #     print(E.stderr)
+        #     raise E
 
-        all_files = result.stdout.split('\n')
-        mixer_files = [x for x in all_files if '.json' in x]
+        # all_files = result.stdout.split('\n')
+        # mixer_files = [x for x in all_files if '.json' in x]
+
+        mixer_files = tf.io.gfile.glob(os.path.join(data_folder, '*mixer.json'))
 
         for m in mixer_files:
-            try:
-                result = subprocess.run(
-                    ['gsutil', 'cat', m],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True,
-                    check=True
-                )
-            except subprocess.CalledProcessError as E:
-                print(E.stderr)
-                raise E
+            # try:
+            #     result = subprocess.run(
+            #         ['gsutil', 'cat', m],
+            #         stdout=subprocess.PIPE,
+            #         stderr=subprocess.PIPE,
+            #         universal_newlines=True,
+            #         check=True
+            #     )
+            # except subprocess.CalledProcessError as E:
+            #     print(E.stderr)
+            #     raise E
 
-            mixer = json.loads(result.stdout)
+            with tf.io.gfile.GFile(m, 'r') as f:
+                mixer = json.loads(f.read())
+            # mixer = json.loads(result.stdout)
             patches = mixer['totalPatches']
 
-            tfrecords = [
-                x for x in all_files if m.replace('mixer.json', '') in x
-            ]
+            pattern = m.replace('mixer.json', '*.tfrecord.gz')
+            tfrecords = tf.io.gfile.glob(pattern)
+            # tfrecords = [
+            #     x for x in all_files if m.replace('mixer.json', '') in x
+            # ]
             tfrecords.sort()
 
             dataset = Data.get_dataset(
