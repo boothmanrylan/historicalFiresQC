@@ -162,7 +162,13 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             train_filter = Data.filter_no_burnt
 
     if min_burn_percent is not None:
-        burn_class = 4 if output == 'all' else 2
+        if output == 'all':
+            if normalized_data:
+                burn_class = 2
+            else:
+                burn_class = 4
+        else:
+            burn_class = 1
         train_filter = lambda im, annot: Data.filter_mostly_burnt(
             im, annot, burn_class, min_burn_percent
         )
