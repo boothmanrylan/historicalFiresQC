@@ -269,10 +269,10 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         annotation_bands = [annotation_bands]
 
     default_scale_fn = lambda x: x / 255
+    if 'NormalizedData' in patterns[0]: # normalized data is already scaled
+        default_scale_fn = lambda x: x
 
     if '*' in patterns[0]: # patterns need unix style file expansion
-        if 'NormalizedData' in patterns[0]: # normalized data is already scaled
-            default_scale_fn = lambda x: x
         files = tf.data.Dataset.list_files(patterns[0], shuffle=shuffle)
         for p in patterns[1:]:
             files = files.concatenate(
