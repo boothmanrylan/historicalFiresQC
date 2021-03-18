@@ -21,7 +21,8 @@ valid_bafs = ['scale', 'log', 'sigmoid', None]
 default_values = {
     'Augment Data': False,
     'Use Previous Classification': False,
-    'Normalized Data': False
+    'Normalized Data': False,
+    'Minimum Burn Percentage': None
 }
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
@@ -32,7 +33,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=True, loss_function='basic',
          store_predictions=False, augment_data=True, assess_model=False,
-         include_tca=False):
+         include_tca=False, min_burn_percent=None):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -41,6 +42,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     assert output in valid_outputs, bad_arg
     assert loss_function in valid_loss_functions, bad_arg
     assert burn_age_function in valid_bafs, bad_arg
+
+    if min_burn_percent is not None:
+        try:
+            assert output in ['all', 'burn']
+        except AssertionError as E:
+            raise ValueError('Cannot enforce minimum burn percentage') from E
 
     # =========================================================
     # SET THE PATHS TO THE DATA AND MODELS
@@ -154,6 +161,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         else:
             train_filter = Data.filter_no_burnt
 
+    if min_burn_percent is not None:
+        burn_class = 4 if output == 'all' else 2
+        train_filter = lambda im, annot: Data.filter_mostly_burnt(
+            im, annot, burn_class, min_burn_percent
+        )
+
     if loss_function == 'no_burn_edge': # add burn edge mask to annotationS
         if annotation_type == 'level_slice':
             annotation_bands.append('lsliceBurnEdges')
@@ -228,7 +241,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Learning Rate': pretty(learning_rate),
         'Burn Age Function': pretty(burn_age_function),
         'Augment Data': augment_data,
-        'Normalized Data': pretty(normalized_data)
+        'Normalized Data': pretty(normalized_data),
+        'Minimum Burn Percentage': pretty(min_burn_percent)
     }
 
     columns = ['Model', 'Date', 'Epochs'] + list(model_parameters.keys())

@@ -26,6 +26,17 @@ def filter_no_x(x, _, annotation):
     return output
 
 
+def filter_mostly_burnt(_, annotation, burn=3, percent=0.5):
+    if tf.shape(annotation).shape[0] > 2:
+        annot = annotation[:, :, 0]
+    else:
+        annot = annotation
+    compare = tf.cast(tf.fill(tf.shape(annot), burn), annot.dtype)
+    numerator = tf.reduce_sum(tf.cast(tf.equal(annot, compare), tf.int64))
+    denominator = tf.cast(tf.reduce_prod(tf.shape(annot)), numerator.dtype)
+    return numerator / denominator > percent
+
+
 def filter_all_max_burn_age(_, annotation):
     if tf.shape(annotation).shape[0] > 2:
         # annotation has extra bands in it e.g. to mask burn edges
