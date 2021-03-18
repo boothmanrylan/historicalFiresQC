@@ -16,7 +16,7 @@ def filter_blank(image, _):
 
 
 def filter_no_x(x, _, annotation):
-    if len(tf.shape(annotation)) > 2:
+    if tf.shape(annotation).shape[0] > 2:
         annot = annotation[:, :, 0]
         compare = tf.cast(tf.fill(tf.shape(annot), x), annot.dtype)
         output = tf.reduce_any(tf.equal(annot, compare))
@@ -27,7 +27,7 @@ def filter_no_x(x, _, annotation):
 
 
 def filter_all_max_burn_age(_, annotation):
-    if len(tf.shape(annotation)) > 2:
+    if tf.shape(annotation).shape[0] > 2:
         # annotation has extra bands in it e.g. to mask burn edges
         # dont use the extra bands
         annot = annotation[:, :, 0]
