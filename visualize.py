@@ -51,9 +51,17 @@ def calculate_vmin_vmax(image, alpha=0.9):
     vmax = mean + (alpha / 2 * std)
     return vmin, vmax
 
+def histogram_to_str(hist, bin_edges):
+    return ', '.join([f'{x}: {y}' for x, y in zip(hist, bin_edges[:-1])])
+
 def visualize(dataset, model=None, num=20, stacked_image=False,
               include_prev_burn_age=False, include_prev_class=False,
-              max_annot=None, max_burn_age=3650, normalized_data=False):
+              max_annot=None, max_burn_age=3650, normalized_data=False,
+              histogram=None):
+    '''
+    histogram should be None for no histogram or an int representing the numbe
+    of classes in an anotation
+    '''
 
     if normalized_data:
         cmap = normalized_class_cmap
@@ -112,23 +120,38 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
         if annotations.ndim == 4:
             for i in range(annotations.shape[-1]):
                 annotation = tf.squeeze(annotations[0, :, :, i]).numpy()
+                if histogram is not None:
+                    hist, bin_edges = np.histogram(annotation, histogram + 1)
+                    hist_str = histogram_to_str(hist, bin_edges)
+                else:
+                    hist_str = None
                 ax[i + plot_offset].imshow(annotation, vmin=vmin, vmax=vmax,
                                            cmap=cmap, interpolation='nearest',
                                            norm=norm)
-                ax[i + plot_offset].set_title(f'Annotation {i + 1}')
+                ax[i + plot_offset].set_title(f'Annotation {i + 1} {hist_str}')
         else:
             annotation = tf.squeeze(annotations[0]).numpy()
+            if histogram is not None:
+                hist, bin_edges = np.histogram(annotation, histogram + 1)
+                hist_str = histogram_to_str(hist, bin_edges)
+            else:
+                hist_str = None
             ax[plot_offset].imshow(annotation, vmin=vmin, vmax=vmax,
                                    cmap=cmap, interpolation='nearest',
                                    norm=norm)
-            ax[plot_offset].set_title('Annotation')
+            ax[plot_offset].set_title(f'Annotation {hist_str}')
 
         if model is not None:
             prediction = tf.argmax(
                 model(images, training=False)[0], -1
             ).numpy()
+            if histogram is not None:
+                hist, bin_edges = np.histogram(annotation, histogram + 1)
+                hist_str = histogram_to_str(hist, bin_edges)
+            else:
+                hist_str = None
             ax[num_figs - 1].imshow(prediction, vmin=vmin, vmax=vmax,
                                     cmap=cmap, interpolation='nearest',
                                     norm=norm)
-            ax[num_figs - 1].set_title('Model Prediction')
+            ax[num_figs - 1].set_title(f'Model Prediction {hist_str}')
         plt.show()
