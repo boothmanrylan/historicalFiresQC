@@ -51,8 +51,13 @@ def calculate_vmin_vmax(image, alpha=0.9):
     vmax = mean + (alpha / 2 * std)
     return vmin, vmax
 
-def histogram_to_str(hist, bin_edges):
-    return ', '.join([f'{x}: {y}' for x, y in zip(hist, bin_edges[:-1])])
+def histogram_to_str(annotation, classes):
+    if classes is not None:
+        hist, bin_edges = np.histogram(annotation, range(classes + 1))
+        output = ', '.join([f'{x}: {y}' for x, y in zip(bin_edges[:-1], hist)])
+    else:
+        output = None
+    return output
 
 def visualize(dataset, model=None, num=20, stacked_image=False,
               include_prev_burn_age=False, include_prev_class=False,
@@ -120,22 +125,14 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
         if annotations.ndim == 4:
             for i in range(annotations.shape[-1]):
                 annotation = tf.squeeze(annotations[0, :, :, i]).numpy()
-                if histogram is not None:
-                    hist, bin_edges = np.histogram(annotation, histogram + 1)
-                    hist_str = histogram_to_str(hist, bin_edges)
-                else:
-                    hist_str = None
+                hist_str = histogram_to_str(annotation, histogram)
                 ax[i + plot_offset].imshow(annotation, vmin=vmin, vmax=vmax,
                                            cmap=cmap, interpolation='nearest',
                                            norm=norm)
                 ax[i + plot_offset].set_title(f'Annotation {i + 1} {hist_str}')
         else:
             annotation = tf.squeeze(annotations[0]).numpy()
-            if histogram is not None:
-                hist, bin_edges = np.histogram(annotation, histogram + 1)
-                hist_str = histogram_to_str(hist, bin_edges)
-            else:
-                hist_str = None
+            hist_str = histogram_to_str(annotation, histogram)
             ax[plot_offset].imshow(annotation, vmin=vmin, vmax=vmax,
                                    cmap=cmap, interpolation='nearest',
                                    norm=norm)
@@ -145,11 +142,7 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
             prediction = tf.argmax(
                 model(images, training=False)[0], -1
             ).numpy()
-            if histogram is not None:
-                hist, bin_edges = np.histogram(annotation, histogram + 1)
-                hist_str = histogram_to_str(hist, bin_edges)
-            else:
-                hist_str = None
+            hist_str = histogram_to_str(annotation, histogram)
             ax[num_figs - 1].imshow(prediction, vmin=vmin, vmax=vmax,
                                     cmap=cmap, interpolation='nearest',
                                     norm=norm)
