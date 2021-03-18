@@ -142,7 +142,7 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
             prediction = tf.argmax(
                 model(images, training=False)[0], -1
             ).numpy()
-            hist_str = histogram_to_str(annotation, histogram)
+            hist_str = histogram_to_str(prediction, histogram)
             ax[num_figs - 1].imshow(prediction, vmin=vmin, vmax=vmax,
                                     cmap=cmap, interpolation='nearest',
                                     norm=norm)
