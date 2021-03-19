@@ -235,10 +235,16 @@ def augment_data(x, y):
     seed = g.uniform_full_int((2,), tf.dtypes.int32)
 
     # randomly adjust the brightness and contrast of x
-    new_x = tf.image.stateless_random_contrast(
-        tf.image.stateless_random_brightness(new_x, 0.5, seed=seed),
-        0.1, 0.5, seed=seed
-    )
+    if g.normal((1,))[0] < 0.67: # ~75% chance this happens
+        new_x = tf.image.stateless_random_contrast(new_x, 0.1, 0.5, seed=seed)
+    if g.normal((1,))[0] < 0.67:
+        new_x = tf.image.stateless_random_brightness(new_x, 0.5, seed=seed)
+
+    # add random gaussian noise to x
+    if g.normal((1,))[0] < 0.67:
+        add_noise = tf.cast(g.normal(tf.shape(new_x)), new_x.dtype)
+        # scale before adding because x values always in range 0, 1
+        new_x = new_x + (add_noise / tf.cast(100.0, new_x.dtype))
 
     # explicit reshape to avoid
     # ValueError: as_list() is not defined on an unknown TensorShape.

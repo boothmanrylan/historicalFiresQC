@@ -529,7 +529,7 @@ if __name__ == '__main__':
         'store_predictions': False,
         'loss_function': 'basic',
         'output': 'all',
-        'augment_data': False,
+        'augment_data': True,
         'assess_model': False,
         'stack_image': False,
         'include_previous_burn_age': False,
