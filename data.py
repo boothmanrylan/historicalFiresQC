@@ -26,6 +26,10 @@ def filter_no_x(x, _, annotation):
     return output
 
 
+def filter_x(x, image, annotation):
+    return not filter_no_x(x, image, annotation)
+
+
 def filter_mostly_burnt(_, annotation, burn=3, percent=0.5):
     if tf.shape(annotation).shape[0] > 2:
         annot = annotation[:, :, 0]
@@ -247,7 +251,8 @@ def augment_data(x, y):
 def get_dataset(patterns, shape, image_bands, annotation_bands,
                 combine=None, batch_size=64, filters=True, cache=False,
                 shuffle=False, repeat=False, prefetch=False,
-                burn_age_function=None, augment=False):
+                burn_age_function=None, augment=False, num_no_burns=None,
+                burn_class=2):
     """
     Create a TFRecord dataset.
 
@@ -268,6 +273,9 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     prefetch (bool): if true the dataset is prefetched with AUTOTUNE buffer.
     burn_age_function (function): If given, applied to burn age during parse.
     augment (bool): If true the data is augmented with random flips etc...
+    burn_class (int): The value that represents a burnt pixel.
+    num_no_burns (None or int): If int the number of patches with no burns that
+        should be added to the dataset.
 
     Returns a tf.data.TFRecordDataset
     """
@@ -316,6 +324,11 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         num_parallel_calls=AUTOTUNE
     )
 
+    if num_no_burns is not None:
+        no_burns = dataset.filter(
+            lambda im, annot: filter_x(burn_class, im, annot)
+        ).take(num_no_burns)
+
     if filters:
         dataset = dataset.filter(filter_blank).filter(filter_nan)
         if not isinstance(filters, bool):
@@ -323,6 +336,9 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
                 filters = [filters]
             for f in filters:
                 dataset = dataset.filter(f)
+
+    if num_no_burns is not None:
+        dataset = dataset.concatenate(no_burns)
 
     if cache:
         dataset = dataset.cache()

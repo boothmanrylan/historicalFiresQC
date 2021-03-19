@@ -22,7 +22,8 @@ default_values = {
     'Augment Data': False,
     'Use Previous Classification': False,
     'Normalized Data': False,
-    'Minimum Burn Percentage': None
+    'Minimum Burn Percentage': None,
+    'Burn Free Patches': None
 }
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
@@ -33,7 +34,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=True, loss_function='basic',
          store_predictions=False, augment_data=True, assess_model=False,
-         include_tca=False, min_burn_percent=None):
+         include_tca=False, min_burn_percent=None, num_no_burns=None):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -48,6 +49,11 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             assert output in ['all', 'burn']
         except AssertionError as E:
             raise ValueError('Cannot enforce minimum burn percentage') from E
+    if num_no_burns is not None:
+        try:
+            assert output in ['all', 'burn']
+        except AssertionError as E:
+            raise ValueError('Cannot filter for patches with no burns') from E
 
     # =========================================================
     # SET THE PATHS TO THE DATA AND MODELS
@@ -184,10 +190,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     train_dataset = Data.get_dataset(
         patterns=train_pattern, shape=shape,
         image_bands=image_bands, annotation_bands=annotation_bands,
-        combine=combine,
+        combine=combine, burn_class=burn_class,
         batch_size=batch_size, filters=train_filter, shuffle=True,
         repeat=True, prefetch=True, cache=True,
-        burn_age_function=baf, augment=augment_data
+        burn_age_function=baf, augment=augment_data, num_no_burns=num_no_burns
     )
 
     if loss_function == 'no_burn_edge': # remove the burn edge mask
@@ -202,7 +208,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         image_bands=image_bands, annotation_bands=annotation_bands,
         combine=combine, batch_size=batch_size, filters=None,
         shuffle=False, repeat=False, prefetch=True, cache=True,
-        burn_age_function=baf, augment=False
+        burn_age_function=baf, augment=False, burn_class=burn_class
     )
 
     ref_point_dataset = Data.get_dataset(
@@ -210,7 +216,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         image_bands=image_bands, annotation_bands=['referencePoints'],
         combine=combine, batch_size=1, filters=True, shuffle=False,
         repeat=False, prefetch=True, cache=True, burn_age_function=None,
-        augment=False
+        augment=False, burn_class=burn_class
     )
 
     # test_dataset = Data.get_dataset(
@@ -248,7 +254,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Burn Age Function': pretty(burn_age_function),
         'Augment Data': augment_data,
         'Normalized Data': pretty(normalized_data),
-        'Minimum Burn Percentage': pretty(min_burn_percent)
+        'Minimum Burn Percentage': pretty(min_burn_percent),
+        'Burn Free Patches': pretty(num_no_burns)
     }
 
     columns = ['Model', 'Date', 'Epochs'] + list(model_parameters.keys())
@@ -268,7 +275,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         missing = [x for x in model_parameters if x not in metadata.columns]
         print(f'Updating metadata to include new parameters: {missing}')
         for elem in missing:
-            metadata[elem] = default_values[elem]
+            metadata[elem] = pretty(default_values[elem])
         all_models = metadata[model_parameters.keys()]
 
     # check if a model with these same parameters has already been trained
@@ -526,7 +533,9 @@ if __name__ == '__main__':
         'assess_model': False,
         'stack_image': False,
         'include_previous_burn_age': False,
-        'include_previous_class': False
+        'include_previous_class': False,
+        'num_no_burns': 100,
+        'min_burn_percent': 0.15
     }
     test_result = main(**params)
     if params['output'] == 'burn_age':
