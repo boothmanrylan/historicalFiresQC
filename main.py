@@ -23,7 +23,8 @@ default_values = {
     'Use Previous Classification': False,
     'Normalized Data': False,
     'Minimum Burn Percentage': None,
-    'Burn Free Patches': None
+    'Burn Free Patches': None,
+    'Percentage Burn Free': None
 }
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
@@ -34,7 +35,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=True, loss_function='basic',
          store_predictions=False, augment_data=True, assess_model=False,
-         include_tca=False, min_burn_percent=None, num_no_burns=None):
+         include_tca=False, min_burn_percent=None, percent_burn_free=None):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -49,7 +50,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
             assert output in ['all', 'burn']
         except AssertionError as E:
             raise ValueError('Cannot enforce minimum burn percentage') from E
-    if num_no_burns is not None:
+    if percent_burn_free is not None:
         try:
             assert output in ['all', 'burn']
         except AssertionError as E:
@@ -193,7 +194,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         combine=combine, burn_class=burn_class,
         batch_size=batch_size, filters=train_filter, shuffle=True,
         repeat=True, prefetch=True, cache=True,
-        burn_age_function=baf, augment=augment_data, num_no_burns=num_no_burns
+        burn_age_function=baf, augment=augment_data,
+        percent_burn_free=percent_burn_free
     )
 
     if loss_function == 'no_burn_edge': # remove the burn edge mask
@@ -255,7 +257,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Augment Data': augment_data,
         'Normalized Data': pretty(normalized_data),
         'Minimum Burn Percentage': pretty(min_burn_percent),
-        'Burn Free Patches': pretty(num_no_burns)
+        'Burn Free Patches': pretty(None),
+        'Percentage Burn Free': pretty(percent_burn_free)
     }
 
     columns = ['Model', 'Date', 'Epochs'] + list(model_parameters.keys())
@@ -534,7 +537,7 @@ if __name__ == '__main__':
         'stack_image': False,
         'include_previous_burn_age': False,
         'include_previous_class': False,
-        'num_no_burns': 100,
+        'percent_burn_free': 0.5,
         'min_burn_percent': 0.15
     }
     test_result = main(**params)

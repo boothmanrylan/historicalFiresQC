@@ -1,3 +1,4 @@
+import math
 import tensorflow as tf
 from tensorflow.keras.layers.experimental import preprocessing
 
@@ -257,7 +258,7 @@ def augment_data(x, y):
 def get_dataset(patterns, shape, image_bands, annotation_bands,
                 combine=None, batch_size=64, filters=True, cache=False,
                 shuffle=False, repeat=False, prefetch=False,
-                burn_age_function=None, augment=False, num_no_burns=None,
+                burn_age_function=None, augment=False, percent_burn_free=None,
                 burn_class=2):
     """
     Create a TFRecord dataset.
@@ -280,8 +281,8 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     burn_age_function (function): If given, applied to burn age during parse.
     augment (bool): If true the data is augmented with random flips etc...
     burn_class (int): The value that represents a burnt pixel.
-    num_no_burns (None or int): If int the number of patches with no burns that
-        should be added to the dataset.
+    percent_burn_free (None or float): If float, the percent of patches that
+        contain zero burned pixels
 
     Returns a tf.data.TFRecordDataset
     """
@@ -330,10 +331,13 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         num_parallel_calls=AUTOTUNE
     )
 
-    if num_no_burns is not None:
-        no_burns = dataset.filter(
+    if percent_burn_free is not None:
+        burn_free_dataset = dataset.filter(filter_blank).filter(filter_nan)
+        burn_free_dataset = burn_free_dataset.filter(
             lambda im, annot: filter_x(burn_class, im, annot)
-        ).take(num_no_burns)
+        )
+        if shuffle:
+            burn_free_dataset = burn_free_dataset.shuffle(1000)
 
     if filters:
         dataset = dataset.filter(filter_blank).filter(filter_nan)
@@ -343,8 +347,18 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
             for f in filters:
                 dataset = dataset.filter(f)
 
-    if num_no_burns is not None:
-        dataset = dataset.concatenate(no_burns)
+    if percent_burn_free is not None:
+        # based on https://stackoverflow.com/a/58573644
+        burn_free_ratio = int(percent_burn_free * 100)
+        burn_ratio = 100 - burn_free_ratio
+        gcd = math.gcd(burn_free_ratio, burn_ratio)
+        d1 = burn_free_dataset.batch(burn_free_ratio // gcd)
+        d2 = dataset.batch(burn_ratio // gcd)
+        combined = tf.data.Dataset.zip((d1, d2)).map(
+            lambda a, b:
+                (tf.concat((a[0], b[0]), 0), tf.concat((a[1], b[1]), 0))
+        )
+        dataset = combined.unbatch()
 
     if cache:
         dataset = dataset.cache()
