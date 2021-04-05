@@ -295,7 +295,8 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         annotation_bands = [annotation_bands]
 
     default_scale_fn = lambda x: x / 255
-    if 'NormalizedData' in patterns[0]: # normalized data is already scaled
+    if 'NormalizedData' in patterns[0] or 'MaskedData' in patterns[0]:
+        # normalized/masked data is already scaled, therefore do nothing
         default_scale_fn = lambda x: x
 
     if '*' in patterns[0]: # patterns need unix style file expansion

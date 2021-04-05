@@ -22,6 +22,7 @@ default_values = {
     'Augment Data': False,
     'Use Previous Classification': False,
     'Normalized Data': False,
+    'Masked Data': False,
     'Minimum Burn Percentage': None,
     'Burn Free Patches': None,
     'Percentage Burn Free': None
@@ -68,10 +69,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # test_pattern = os.path.join(data_folder, 'test*.tfrecord.gz')
 
     normalized_data = bool('NormalizedData' in data_folder)
+    masked_data = bool('MaskedData' in data_folder)
+    assert not (normalized_data and masked_data)
 
     if include_tca:
         try:
-            assert normalized_data
+            assert normalized_data or masked_data
         except AssertionError as E:
             raise ValueError('TCA only exists in normalized data') from E
 
@@ -80,7 +83,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ==========================================================
     print('Creating datasets...')
 
-    if normalized_data:
+    if normalized_data or masked_data:
         classes = 3 # None, land, burn
         labels = ['None', 'Land', 'Burn']
         combine = None
@@ -107,7 +110,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         labels = ['Not Burnt', 'Burnt']
         classes = 2 # predicting burn vs not burn
         # convert all non burn classes to 0 and all burn classes to 1
-        if normalized_data:
+        if normalized_data or masked_data:
             combine = [(1, 0), (2, 1)]
         else:
             combine = [(1, 0), (2, 0), (3, 0), (4, 1), (5, 1)]
@@ -162,15 +165,15 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         train_filter = Data.filter_all_max_burn_age
     elif output == 'burn':
         train_filter = lambda im, annot: Data.filter_no_x(1, im, annot)
-    else:
-        if normalized_data:
+    else: # output == all
+        if normalized_data or masked_data:
             train_filter = lambda im, annot: Data.filter_no_x(2, im, annot)
         else:
             train_filter = Data.filter_no_burnt
 
     if min_burn_percent is not None:
         if output == 'all':
-            if normalized_data:
+            if normalized_data or masked_data:
                 burn_class = 2
             else:
                 burn_class = 4
@@ -256,6 +259,7 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Burn Age Function': pretty(burn_age_function),
         'Augment Data': augment_data,
         'Normalized Data': pretty(normalized_data),
+        'Masked Data': pretty(masked_data),
         'Minimum Burn Percentage': pretty(min_burn_percent),
         'Burn Free Patches': pretty(None),
         'Percentage Burn Free': pretty(percent_burn_free)
@@ -554,4 +558,6 @@ if __name__ == '__main__':
         include_prev_burn_age=params['include_previous_burn_age'],
         include_prev_class=params['include_previous_class'],
         max_annot=max_annot, max_burn_age=test_result['burn_age_function'](3650)
+
+
     )
