@@ -273,7 +273,10 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         'Masked Data': pretty(masked_data),
         'Minimum Burn Percentage': pretty(min_burn_percent),
         'Burn Free Patches': pretty(None),
-        'Percentage Burn Free': pretty(percent_burn_free)
+        'Percentage Burn Free': pretty(percent_burn_free),
+        'Include MSS Bands': pretty(include_mss_bands),
+        'Include TC Bands': pretty(include_tc_bands),
+        'Include TCA': pretty(include_tca)
     }
 
     columns = ['Model', 'Date', 'Epochs'] + list(model_parameters.keys())
