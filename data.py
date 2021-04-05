@@ -9,7 +9,8 @@ all_bands = [
     'dateDiff', 'prevLSliceBurnAge', 'prevBBoxBurnAge', 'lsliceClass',
     'bboxClass', 'lsliceBurnAge', 'bboxBurnAge', 'lsliceBurnEdges',
     'bboxBurnEdges', 'referencePoints', 'refBurnAge', 'prevLSliceClass',
-    'prevBBoxClass', 'TCA', 'OldTCA'
+    'prevBBoxClass', 'TCA', 'OldTCA', 'Brightness', 'Greenness', 'Yellowness',
+    'Nonesuch', 'OldBrightness', 'OldGreeness', 'OldYellowness', 'OldNonesuch'
 ]
 
 def filter_blank(image, _):

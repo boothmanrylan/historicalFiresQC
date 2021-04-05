@@ -25,7 +25,10 @@ default_values = {
     'Masked Data': False,
     'Minimum Burn Percentage': None,
     'Burn Free Patches': None,
-    'Percentage Burn Free': None
+    'Percentage Burn Free': None,
+    'Include MSS Bands': True,
+    'Include TC Bands': False,
+    'Include TCA': False
 }
 
 def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
@@ -36,7 +39,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=True, loss_function='basic',
          store_predictions=False, augment_data=True, assess_model=False,
-         include_tca=False, min_burn_percent=None, percent_burn_free=None):
+         include_tca=False, min_burn_percent=None, percent_burn_free=None,
+         include_mss_bands=True, include_tc_bands=False):
     # ==========================================================
     # CHECK THAT ARGUMENTS ARE VALID
     # ==========================================================
@@ -120,7 +124,12 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
     # ==========================================================
     # SET THE BANDS TO USE AS INPUT TO THE MODEL
     # ==========================================================
-    image_bands = ['B4', 'B5', 'B6', 'B7']
+    image_bands = []
+    if include_mss_bands:
+        image_bands.extend(['B4', 'B5', 'B6', 'B7'])
+    if include_tc_bands:
+        tc_band_names = ['Brightness', 'Greenness', 'Yellowness', 'Nonesuch']
+        image_bands.extend(tc_band_names)
     if include_tca:
         image_bands.append('TCA')
 
@@ -140,6 +149,8 @@ def main(bucket='boothmanrylan', data_folder='historicalFiresQCInput',
         else:
             image_bands.append('prevBBoxClass')
     channels = len(image_bands)
+
+    assert channels > 0 # make sure some bands are being included
 
     print(f'Using {image_bands} as input to model.')
     print(f'Input has {channels} channels. Output has {classes} classes.')
