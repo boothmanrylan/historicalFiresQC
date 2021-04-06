@@ -4,6 +4,8 @@ from tensorflow.keras.layers.experimental import preprocessing
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
+rng = tf.random.Generator.from_seed(123, alg='philox')
+
 all_bands = [
     'B4', 'B5', 'B6', 'B7', 'OldB4', 'OldB5', 'OldB6', 'OldB7',
     'dateDiff', 'prevLSliceBurnAge', 'prevBBoxBurnAge', 'lsliceClass',
@@ -206,7 +208,7 @@ augmenter = tf.keras.Sequential([
 ])
 
 @tf.function
-def augment_data(x, y):
+def augment_data(x, y, seed):
     """
     randomly flips, rotates, and zooms x and y in identical fashion
     randomly adjusts the brightness and contrast of x
@@ -233,20 +235,19 @@ def augment_data(x, y):
     new_x = xy[:, :, :, :-n_y_bands]
     new_y = tf.cast(tf.squeeze(xy[:, :, :, -n_y_bands:]), y_type)
 
-    g = tf.random.get_global_generator()
-    seed = g.uniform_full_int((2,), tf.dtypes.int32)
+    new_seed = tf.random.experimental.stateless_split(seed, num=1)[0, :]
 
     # randomly adjust the brightness and contrast of x
-    if g.normal((1,))[0] < 0.67: # ~75% chance this happens
-        new_x = tf.image.stateless_random_contrast(new_x, 0.1, 0.5, seed=seed)
-    if g.normal((1,))[0] < 0.67:
-        new_x = tf.image.stateless_random_brightness(new_x, 0.5, seed=seed)
+    #if g.normal((1,))[0] < 0.67: # ~75% chance this happens
+    new_x = tf.image.stateless_random_contrast(new_x, 0.1, 0.5, seed=new_seed)
+    #if g.normal((1,))[0] < 0.67:
+    new_x = tf.image.stateless_random_brightness(new_x, 0.5, seed=new_seed)
 
     # add random gaussian noise to x
-    if g.normal((1,))[0] < 0.67:
-        add_noise = tf.cast(g.normal(tf.shape(new_x)), new_x.dtype)
-        # scale before adding because x values always in range 0, 1
-        new_x = new_x + (add_noise / tf.cast(100.0, new_x.dtype))
+    # if g.normal((1,))[0] < 0.67:
+    add_noise = tf.cast(rng.normal(tf.shape(new_x)), new_x.dtype)
+    # scale before adding because x values always in range 0, 1
+    new_x += (add_noise / tf.cast(100.0, new_x.dtype))
 
     # explicit reshape to avoid
     # ValueError: as_list() is not defined on an unknown TensorShape.
@@ -255,6 +256,9 @@ def augment_data(x, y):
     new_y = tf.reshape(y, y_shape)
     return  new_x, new_y
 
+def augment_wrapper(x, y):
+    seed = rng.make_seeds(2)[0]
+    return augment_data(x, y, seed)
 
 def get_dataset(patterns, shape, image_bands, annotation_bands,
                 combine=None, batch_size=64, filters=True, cache=False,
@@ -371,7 +375,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     dataset = dataset.batch(batch_size)
 
     if augment:
-        dataset = dataset.map(augment_data)
+        dataset = dataset.map(augment_wrapper)
 
     if repeat:
         dataset = dataset.repeat()
