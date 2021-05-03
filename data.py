@@ -12,7 +12,8 @@ all_bands = [
     'bboxClass', 'lsliceBurnAge', 'bboxBurnAge', 'lsliceBurnEdges',
     'bboxBurnEdges', 'referencePoints', 'refBurnAge', 'prevLSliceClass',
     'prevBBoxClass', 'TCA', 'OldTCA', 'Brightness', 'Greenness', 'Yellowness',
-    'Nonesuch', 'OldBrightness', 'OldGreeness', 'OldYellowness', 'OldNonesuch'
+    'Nonesuch', 'OldBrightness', 'OldGreeness', 'OldYellowness',
+    'OldNonesuch', 'bai'
 ]
 
 def filter_blank(image, _):
@@ -108,8 +109,7 @@ def _stack_bands(parsed_example, band_names, dtype):
 
 
 @tf.function
-def parse(example, shape, image_bands, annotation_bands, combine=None,
-          burn_age_function=None, default_scale_fn=lambda x: x / 255):
+def parse(example, shape, image_bands, annotation_bands):
 
     used_bands = image_bands + annotation_bands
 
@@ -117,88 +117,16 @@ def parse(example, shape, image_bands, annotation_bands, combine=None,
         k: tf.io.FixedLenFeature(shape, tf.float32) for k in used_bands
     }
 
-    if burn_age_function is None:
-        burn_age_function = scale_burn_age
-
     parsed = tf.io.parse_single_example(example, feature_description)
 
-    # burn age bands must be scaled, but regular annotation bands should not be
-    # scaled therefore add them each separately to the annotation
-    lslice_burn_age = _add_separately(
-        'lsliceBurnAge', annotation_bands, parsed, shape, burn_age_function
+    image = tf.stack(
+        [tf.reshape(parsed[x], shape) for x in image_bands], -1
     )
+    annotation = tf.cast(tf.stack(
+        [tf.reshape(parsed[x], shape) for x in annotation_bands], -1
+    ), tf.int64)
 
-    bbox_burn_age = _add_separately(
-        'bboxBurnAge', annotation_bands, parsed, shape, burn_age_function
-    )
-
-    # ensure burn age bands are not added to the annotation twice
-    new_annotation_bands = annotation_bands.copy()
-    for band in ['lsliceBurnAge', 'bboxBurnAge']:
-        if band in annotation_bands:
-            new_annotation_bands.remove(band)
-
-    if lslice_burn_age is not None or bbox_burn_age is not None:
-        annot_dtype = tf.float32
-    else:
-        annot_dtype = tf.int64
-
-    annotation = _stack_bands(parsed, new_annotation_bands, annot_dtype)
-
-    if combine is not None: # combine should only be applied to the first band
-        for original, change in combine:
-            original = tf.cast(original, annotation.dtype)
-            change = tf.cast(change, annotation.dtype)
-            if len(tf.shape(annotation)) > 2:
-                bands = tf.split(annotation, [1, annotation.shape[-1] - 1], -1)
-                combined = tf.where(bands[0] == original, change, bands[0])
-                annotation = tf.concat([combined, bands[1]], -1)
-            else:
-                annotation = tf.where(annotation == original, change, annotation)
-
-    if lslice_burn_age is not None:
-        if annotation is not None:
-            annotation = tf.concat([annotation, lslice_burn_age], -1)
-        else:
-            annotation = tf.squeeze(lslice_burn_age)
-
-    if bbox_burn_age is not None:
-        if annotation is not None:
-            annotation = tf.concat([annotation, bbox_burn_age], -1)
-        else:
-            annotation = tf.squeeze(bbox_burn_age)
-
-    # some bands must be scaled differently than MSS band add them separately
-    separate_band_names = {
-        'dateDiff': lambda x: x / 1071,
-        'prevBBoxBurnAge': burn_age_function,
-        'prevLSliceBurnAge': burn_age_function,
-        'prevLSliceClass': lambda x: x,
-        'prevBBoxClass': lambda x: x
-    }
-
-    separate_bands = [
-        _add_separately(band_name, image_bands, parsed, shape, scale_fn)
-        for band_name, scale_fn in separate_band_names.items()
-    ]
-
-    # ensure the bands added separately are not added twice
-    new_image_bands = image_bands.copy()
-    for band in separate_band_names:
-        if band in image_bands:
-            new_image_bands.remove(band)
-
-    image = _stack_bands(parsed, new_image_bands, tf.float32)
-    image = default_scale_fn(image)
-
-    for band in separate_bands:
-        if band is not None:
-            if image is not None:
-                image = tf.concat([image, band], -1)
-            else:
-                image = tf.squeeze(band)
-
-    return image, annotation
+    return tf.squeeze(image), tf.squeeze(annotation)
 
 # used by augment data to randomly flip, rotate and zoom training data
 augmenter = tf.keras.Sequential([
@@ -261,9 +189,9 @@ def augment_wrapper(x, y):
     return augment_data(x, y, seed)
 
 def get_dataset(patterns, shape, image_bands, annotation_bands,
-                combine=None, batch_size=64, filters=True, cache=False,
+                batch_size=64, filters=True, cache=False,
                 shuffle=False, repeat=False, prefetch=False,
-                burn_age_function=None, augment=False, percent_burn_free=None,
+                augment=False, percent_burn_free=None,
                 burn_class=2):
     """
     Create a TFRecord dataset.
@@ -273,7 +201,6 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     shape (int tuple): Shape of each patch without band dimension.
     image_bands (str list): Name of each band to use in model input.
     annotation_bands (str list): Name of each band to use in ground truth.
-    combine ((int, int) list): For each tuple in combine replace all pixels in
         annotation that eqaul the first value with the second value.
     filters (bool or function list): If false no filters are applied, if true
         any patches with NaN or whose annotations are all blank are filtered
@@ -283,7 +210,6 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     shuffle (bool): if true shuffle dataset with buffer size 1000.
     repeat (bool): if true dataset repeates infinitely.
     prefetch (bool): if true the dataset is prefetched with AUTOTUNE buffer.
-    burn_age_function (function): If given, applied to burn age during parse.
     augment (bool): If true the data is augmented with random flips etc...
     burn_class (int): The value that represents a burnt pixel.
     percent_burn_free (None or float): If float, the percent of patches that
@@ -298,11 +224,6 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         image_bands = [image_bands]
     if not isinstance(annotation_bands, list):
         annotation_bands = [annotation_bands]
-
-    default_scale_fn = lambda x: x / 255
-    if 'NormalizedData' in patterns[0] or 'MaskedData' in patterns[0]:
-        # normalized/masked data is already scaled, therefore do nothing
-        default_scale_fn = lambda x: x
 
     if '*' in patterns[0]: # patterns need unix style file expansion
         files = tf.data.Dataset.list_files(patterns[0], shuffle=shuffle)
@@ -325,15 +246,9 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         except AssertionError as E:
             raise ValueError(f'invalid annotation band name: {b}') from E
 
-    # set combine to None if predicting burn age
-    if ('lsliceBurnAge' in annotation_bands or
-        'bboxBurnAge' in annotation_bands):
-        combine=None
-
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
-        lambda x: parse(x, shape, image_bands, annotation_bands, combine,
-                        burn_age_function, default_scale_fn),
+        lambda x: parse(x, shape, image_bands, annotation_bands),
         num_parallel_calls=AUTOTUNE
     )
 
