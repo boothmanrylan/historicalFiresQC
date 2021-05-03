@@ -13,7 +13,7 @@ all_bands = [
     'bboxBurnEdges', 'referencePoints', 'refBurnAge', 'prevLSliceClass',
     'prevBBoxClass', 'TCA', 'OldTCA', 'Brightness', 'Greenness', 'Yellowness',
     'Nonesuch', 'OldBrightness', 'OldGreeness', 'OldYellowness',
-    'OldNonesuch', 'bai'
+    'OldNonesuch', 'bai', 'class'
 ]
 
 def filter_blank(image, _):
