@@ -285,7 +285,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         dataset = dataset.cache()
 
     if shuffle:
-        dataset = dataset.shuffle(1000)
+        dataset = dataset.shuffle(buffer_size=AUTOTUNE)
 
     dataset = dataset.batch(batch_size)
 
