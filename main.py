@@ -12,6 +12,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     annotation_bands = ['class']
 
     train_filter = lambda x, y: Data.filter_mostly_burnt(x, y, 2, min_burn_percent)
+    if min_burn_percent == 0:
+        train_filter = None
 
     dataset = Data.get_dataset(
         patterns=os.path.join(bucket, data_pattern),
@@ -19,7 +21,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         image_bands=image_bands,
         annotation_bands=annotation_bands,
         batch_size=batch_size,
-        filters=[train_filter],
+        filters=train_filter,
         cache=True,
         shuffle=True,
         repeat=True,
