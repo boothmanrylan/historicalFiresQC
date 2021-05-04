@@ -114,7 +114,7 @@ def bai(bands):
 
 @tf.function
 def parse_old(example, shape, image_bands, annotation_bands):
-    used_bands = image_bands.append('lsliceClass')
+    used_bands = image_bands + ['lsliceClass']
     if 'bai' in used_bands:
         calc_bai = True
         used_bands.remove('bai')
