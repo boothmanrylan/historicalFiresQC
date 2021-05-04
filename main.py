@@ -20,24 +20,6 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     if min_burn_percent == 0:
         train_filter = None
 
-    print('building train dataset')
-    dataset = Data.get_dataset(
-        patterns=os.path.join(bucket, data_pattern),
-        shape=shape,
-        image_bands=image_bands,
-        annotation_bands=annotation_bands,
-        batch_size=batch_size,
-        filters=train_filter,
-        cache=False,
-        shuffle=False,
-        repeat=True,
-        prefetch=True,
-        augment=False,
-        percent_burn_free=percent_burn_free,
-        burn_class=2,
-    )
-    print('done building train dataset')
-
     model_path = os.path.join(bucket, model_pattern)
 
     channels = len(image_bands)
@@ -57,6 +39,23 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         print('not loading model')
 
     if train_model:
+        print('building train dataset')
+        dataset = Data.get_dataset(
+            patterns=os.path.join(bucket, data_pattern),
+            shape=shape,
+            image_bands=image_bands,
+            annotation_bands=annotation_bands,
+            batch_size=batch_size,
+            filters=train_filter,
+            cache=False,
+            shuffle=False,
+            repeat=True,
+            prefetch=True,
+            augment=False,
+            percent_burn_free=percent_burn_free,
+            burn_class=2,
+        )
+        print('done building train dataset')
         print('training model')
         print(f'storing checkpoints at {model_path}')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
