@@ -45,9 +45,14 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     )
 
     if load_model:
+        print(f'loading model from {model_path}')
         model.load_weights(model_path).expect_partial()
+    else:
+        print('not loading model')
 
     if train_model:
+        print('training model')
+        print(f'storing checkpoints at {model_path}')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             filepath=model_path, save_weights_only=True,
             save_freq=steps_per_epoch
@@ -63,8 +68,11 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             dataset, epochs=epochs, verbose=1,
             steps_per_epoch=steps_per_epoch, callbacks=callbacks
         )
+    else:
+        print('not training model')
 
     if predict:
+        print(f'storing predictions for {test_folder} to {predictions_folder}')
         mixer_files = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*mixer.json'))
 
         for m in mixer_files:
@@ -111,6 +119,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
 
                     writer.write(example.SerializeToString())
                     patch += 1
+    else:
+        print('not storing predictions')
 
 
 if __name__ == '__main__':
