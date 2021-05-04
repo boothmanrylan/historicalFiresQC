@@ -40,97 +40,97 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     else:
         print('not loading model')
 
-    # if train_model:
-    #     print('building train dataset')
-    #     dataset = Data.get_dataset(
-    #         patterns=os.path.join(bucket, data_pattern),
-    #         shape=shape,
-    #         image_bands=image_bands,
-    #         annotation_bands=annotation_bands,
-    #         batch_size=batch_size,
-    #         filters=train_filter,
-    #         cache=False,
-    #         shuffle=False,
-    #         repeat=True,
-    #         prefetch=True,
-    #         augment=False,
-    #         percent_burn_free=percent_burn_free,
-    #         burn_class=2,
-    #     )
-    #     print('done building train dataset')
-    #     print('training model')
-    #     print(f'storing checkpoints at {model_path}')
-    #     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    #         filepath=model_path, save_weights_only=True,
-    #         save_freq=steps_per_epoch
-    #     )
-    #     callbacks = [checkpoint]
+    if train_model:
+        print('building train dataset')
+        dataset = Data.get_dataset(
+            patterns=os.path.join(bucket, data_pattern),
+            shape=shape,
+            image_bands=image_bands,
+            annotation_bands=annotation_bands,
+            batch_size=batch_size,
+            filters=train_filter,
+            cache=False,
+            shuffle=False,
+            repeat=True,
+            prefetch=True,
+            augment=False,
+            percent_burn_free=percent_burn_free,
+            burn_class=2,
+        )
+        print('done building train dataset')
+        print('training model')
+        print(f'storing checkpoints at {model_path}')
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(
+            filepath=model_path, save_weights_only=True,
+            save_freq=steps_per_epoch
+        )
+        callbacks = [checkpoint]
 
-    #     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-    #     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-    #     metrics = ['accuracy']
-    #     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-    #     model.fit(
-    #         dataset, epochs=epochs, verbose=1,
-    #         steps_per_epoch=steps_per_epoch, callbacks=callbacks
-    #     )
-    # else:
-    #     print('not training model')
+        loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        metrics = ['accuracy']
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+        model.fit(
+            dataset, epochs=epochs, verbose=1,
+            steps_per_epoch=steps_per_epoch, callbacks=callbacks
+        )
+    else:
+        print('not training model')
 
-    # if predict:
-    #     print(f'storing predictions for {test_folder} to {predictions_folder}')
-    #     mixer_files = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*mixer.json'))
+    if predict:
+        print(f'storing predictions for {test_folder} to {predictions_folder}')
+        mixer_files = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*mixer.json'))
 
-    #     for m in mixer_files:
-    #         with tf.io.gfile.GFile(m, 'r') as f:
-    #             mixer = json.loads(f.read())
-    #         patches = mixer['totalPatches']
+        for m in mixer_files:
+            with tf.io.gfile.GFile(m, 'r') as f:
+                mixer = json.loads(f.read())
+            patches = mixer['totalPatches']
 
-    #         pattern = m.replace('mixer.json', '*.tfrecord.gz')
-    #         tfrecords = tf.io.gfile.glob(pattern)
-    #         tfrecords.sort()
+            pattern = m.replace('mixer.json', '*.tfrecord.gz')
+            tfrecords = tf.io.gfile.glob(pattern)
+            tfrecords.sort()
 
-    #         print(f'building dataset for {pattern}')
-    #         dataset = Data.get_dataset(
-    #             patterns=tfrecords, shape=shape, image_bands=image_bands,
-    #             annotation_bands=['lsliceClass'], batch_size=1, filters=False,
-    #             shuffle=False, train=False
-    #         )
-    #         print('done building dataset')
+            print(f'building dataset for {pattern}')
+            dataset = Data.get_dataset(
+                patterns=tfrecords, shape=shape, image_bands=image_bands,
+                annotation_bands=['lsliceClass'], batch_size=1, filters=False,
+                shuffle=False, train=False
+            )
+            print('done building dataset')
 
-    #         predictions = model.predict(dataset, steps=patches, verbose=1)
+            predictions = model.predict(dataset, steps=patches, verbose=1)
 
-    #         filename = m.replace('-mixer.json', '-results.tfrecord')
-    #         filename = filename.replace(test_folder, predictions_folder)
-    #         if filename[0] == '/': # remove erroneous /
-    #             filename = filename[1:]
+            filename = m.replace('-mixer.json', '-results.tfrecord')
+            filename = filename.replace(test_folder, predictions_folder)
+            if filename[0] == '/': # remove erroneous /
+                filename = filename[1:]
 
-    #         print(f'Writing results for {m} to {filename}')
+            print(f'Writing results for {m} to {filename}')
 
-    #         with tf.io.TFRecordWriter(filename) as writer:
-    #             patch = 1
-    #             for pred in predictions:
-    #                 k = int(128 / 2)
-    #                 pred = pred[k:-k, k:-k]
-    #                 value = np.argmax(pred, -1).flatten()
-    #                 feature = tf.train.Feature(
-    #                     int64_list=tf.train.Int64List(value=value)
-    #                 )
+            with tf.io.TFRecordWriter(filename) as writer:
+                patch = 1
+                for pred in predictions:
+                    k = int(128 / 2)
+                    pred = pred[k:-k, k:-k]
+                    value = np.argmax(pred, -1).flatten()
+                    feature = tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=value)
+                    )
 
-    #                 if patch % 100 == 0:
-    #                     print(f'Writing {patch} of {patches}')
+                    if patch % 100 == 0:
+                        print(f'Writing {patch} of {patches}')
 
-    #                 example = tf.train.Example(
-    #                     features=tf.train.Features(
-    #                         feature={'class': feature}
-    #                     )
-    #                 )
+                    example = tf.train.Example(
+                        features=tf.train.Features(
+                            feature={'class': feature}
+                        )
+                    )
 
-    #                 writer.write(example.SerializeToString())
-    #                 patch += 1
-    # else:
-    #     print('not storing predictions')
+                    writer.write(example.SerializeToString())
+                    patch += 1
+    else:
+        print('not storing predictions')
 
 
 if __name__ == '__main__':
