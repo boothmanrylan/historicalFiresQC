@@ -25,8 +25,6 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     channels = len(image_bands)
     classes = 3 # none, not-burn, burn
 
-    print((*shape, channels))
-
     print('building model')
     model = Model.build_unet_model(
         input_shape=(*shape, channels), classes=classes
@@ -35,7 +33,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
 
     if load_model:
         print(f'loading model from {model_path}')
-        # model.load_weights(model_path)
+        model.load_weights(model_path)
         print('done loading model')
     else:
         print('not loading model')
