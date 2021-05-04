@@ -13,8 +13,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          test_folder='historicalFiresQCMaskedData',
          predictions_folder='rylansPicks'):
     # print('Starting main')
-    # image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
-    # annotation_bands = ['class']
+    image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
+    annotation_bands = ['class']
 
     # train_filter = lambda x, y: Data.filter_mostly_burnt(x, y, 2, min_burn_percent)
     # if min_burn_percent == 0:
@@ -24,6 +24,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
 
     channels = len(image_bands)
     classes = 3 # none, not-burn, burn
+
+    print((*shape, channels))
 
     print('building model')
     model = Model.build_unet_model(
