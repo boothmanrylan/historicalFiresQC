@@ -12,15 +12,15 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          min_burn_percent=None, percent_burn_free=None, predict=False,
          test_folder='historicalFiresQCMaskedData',
          predictions_folder='rylansPicks'):
-    # print('Starting main')
+    print('Starting main')
     image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
     annotation_bands = ['class']
 
-    # train_filter = lambda x, y: Data.filter_mostly_burnt(x, y, 2, min_burn_percent)
-    # if min_burn_percent == 0:
-    #     train_filter = None
+    train_filter = lambda x, y: Data.filter_mostly_burnt(x, y, 2, min_burn_percent)
+    if min_burn_percent == 0:
+        train_filter = None
 
-    # model_path = os.path.join(bucket, model_pattern)
+    model_path = os.path.join(bucket, model_pattern)
 
     channels = len(image_bands)
     classes = 3 # none, not-burn, burn
