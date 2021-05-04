@@ -108,6 +108,38 @@ def _stack_bands(parsed_example, band_names, dtype):
     return output
 
 
+def bai(bands):
+    return 1.0 / ((0.1 - bands['B5']) ** 2 + (0.06 - bands['B7']) ** 2)
+
+
+@tf.function
+def parse_old(example, shape, image_bands, annotation_bands):
+    used_bands = image_bands + annotation_bands
+    if 'bai' in used_bands:
+        calc_bai = True
+        used_bands.remove('bai')
+    else:
+        calc_bai = False
+
+    feature_description = {
+        k: tf.io.FixedLenFeature(shape, tf.float32) for k in used_bands
+    }
+
+    parsed = tf.io.parse_single_example(example, feature_description)
+
+    if calc_bai:
+        parsed['bai'] = bai(parsed)
+
+    image = tf.stack(
+        [tf.reshape(parsed[x], shape) for x in image_bands], -1
+    )
+    annotation = tf.cast(tf.stack(
+        [tf.reshape(parsed[x], shape) for x in annotation_bands], -1
+    ), tf.int64)
+
+    return tf.squeeze(image), tf.squeeze(annotation)
+
+
 @tf.function
 def parse(example, shape, image_bands, annotation_bands):
 
@@ -192,7 +224,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
                 batch_size=64, filters=True, cache=False,
                 shuffle=False, repeat=False, prefetch=False,
                 augment=False, percent_burn_free=None,
-                burn_class=2):
+                burn_class=2, train=True):
     """
     Create a TFRecord dataset.
 
@@ -246,9 +278,14 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         except AssertionError as E:
             raise ValueError(f'invalid annotation band name: {b}') from E
 
+    if train:
+        parse_fn = parse
+    else:
+        parse_fn = parse_old # must calculate BAI
+
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
     dataset = dataset.map(
-        lambda x: parse(x, shape, image_bands, annotation_bands),
+        lambda x: parse_fn(x, shape, image_bands, annotation_bands),
         num_parallel_calls=AUTOTUNE
     )
 

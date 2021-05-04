@@ -1,5 +1,7 @@
+import json
 import os
 import tensorflow as tf
+import numpy as np
 import data as Data
 import model as Model
 
@@ -7,7 +9,9 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          model_pattern='rylansPicksModel', shape=(160, 160), batch_size=32,
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=False,
-         min_burn_percent=None, percent_burn_free=None):
+         min_burn_percent=None, percent_burn_free=None, predict=False,
+         test_folder='historicalFiresQCMaskedData',
+         predictions_folder='rylansPicks'):
     image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
     annotation_bands = ['class']
 
@@ -60,8 +64,57 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             steps_per_epoch=steps_per_epoch, callbacks=callbacks
         )
 
+    if predict:
+        mixer_files = tf.io.gfile.glob(os.path.join(test_folder, '*mixer.json'))
+
+        for m in mixer_files:
+            with tf.io.gfile.GFile(m, 'r') as f:
+                mixer = json.loads(f.read())
+            patches = mixer['totalPatches']
+
+            pattern = m.replace('mixer.json', '*.tfrecord.gz')
+            tfrecords = tf.io.gfile.glob(pattern)
+            tfrecords.sort()
+
+            dataset = Data.get_dataset(
+                tfrecords, shape, image_bands, annotation_bands,
+                batch_size=1, filters=False, shuffle=False, train=False
+            )
+
+            predictions = model.predict(dataset, steps=patches, verbose=1)
+
+            filename = m.replace('-mixer.json', '-results.tfrecord')
+            filename = filename.replace(test_folder, '')
+            if filename[0] == '/': # remove erroneous /
+                filename = filename[1:]
+            output_file = os.path.join(predictions_folder, filename)
+
+            print(f'Writing results for {m} to {output_file}')
+
+            with tf.io.TFRecordWriter(output_file) as writer:
+                patch = 1
+                for pred in predictions:
+                    k = int(128 / 2)
+                    pred = pred[k:-k, k:-k]
+                    value = np.argmax(pred, -1).flatten()
+                    feature = tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=value)
+                    )
+
+                    if patch % 100 == 0:
+                        print(f'Writing {patch} of {patches}')
+
+                    example = tf.train.Example(
+                        features=tf.train.Features(
+                            feature={'class': feature}
+                        )
+                    )
+
+                    writer.write(example.SerializeToString())
+                    patch += 1
+
+
 if __name__ == '__main__':
-    import visualize as Visualize
     params = {
         'bucket': '/home/rylan/school/historicalFiresQC/',
         'data_pattern': 'data',
