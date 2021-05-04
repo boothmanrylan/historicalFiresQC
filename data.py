@@ -114,10 +114,7 @@ def bai(bands):
 
 @tf.function
 def parse_old(example, shape, image_bands, annotation_bands):
-    if 'class' in annotation_bands:
-        annotation_bands.remove('class')
-        annotation_bands.append('lsliceClass')
-    used_bands = image_bands + annotation_bands
+    used_bands = image_bands.append('lsliceClass')
     if 'bai' in used_bands:
         calc_bai = True
         used_bands.remove('bai')
@@ -136,9 +133,7 @@ def parse_old(example, shape, image_bands, annotation_bands):
     image = tf.stack(
         [tf.reshape(parsed[x], shape) for x in image_bands], -1
     )
-    annotation = tf.cast(tf.stack(
-        [tf.reshape(parsed[x], shape) for x in annotation_bands], -1
-    ), tf.int64)
+    annotation = tf.cast(tf.reshape(parsed['lsliceClass'], shape), tf.int64)
 
     return tf.squeeze(image), tf.squeeze(annotation)
 
