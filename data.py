@@ -109,7 +109,9 @@ def _stack_bands(parsed_example, band_names, dtype):
 
 
 def bai(bands):
-    return 1.0 / ((0.1 - bands['B5']) ** 2 + (0.06 - bands['B7']) ** 2)
+    red = tf.pow(tf.subtract(0.1, bands['B5']), 2)
+    nir = tf.pow(tf.subtract(0.06, bands['B7']), 2)
+    return tf.divide(1.0, tf.add(red, nir))
 
 
 @tf.function
