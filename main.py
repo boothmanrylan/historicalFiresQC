@@ -11,14 +11,14 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          train_model=False, load_model=False,
          min_burn_percent=None, percent_burn_free=None, predict=False,
          test_folder='historicalFiresQCMaskedData',
-         predictions_folder='rylansPicks'):
+         predictions_folder='rylansPicks', dataset_options=None):
     print('Starting main')
     image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
     annotation_bands = ['class']
 
     train_filter = lambda x, y: Data.filter_mostly_burnt(x, y, 2, min_burn_percent)
     if min_burn_percent == 0:
-        train_filter = None
+        train_filter = False
 
     model_path = os.path.join(bucket, model_pattern)
 
@@ -40,18 +40,18 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
 
     if train_model:
         print('building train dataset')
+        if dataset_options is None:
+            datset_options = {}
+
         dataset = Data.get_dataset(
+            **dataset_options,
             patterns=os.path.join(bucket, data_pattern),
             shape=shape,
             image_bands=image_bands,
             annotation_bands=annotation_bands,
             batch_size=batch_size,
             filters=train_filter,
-            cache=False,
-            shuffle=False,
             repeat=True,
-            prefetch=True,
-            augment=False,
             percent_burn_free=percent_burn_free,
             burn_class=2,
         )
