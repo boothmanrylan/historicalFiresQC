@@ -12,6 +12,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          min_burn_percent=None, percent_burn_free=None, predict=False,
          test_folder='historicalFiresQCMaskedData',
          predictions_folder='rylansPicks'):
+    print('Starting main')
     image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
     annotation_bands = ['class']
 
@@ -19,6 +20,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     if min_burn_percent == 0:
         train_filter = None
 
+    print('building train dataset')
     dataset = Data.get_dataset(
         patterns=os.path.join(bucket, data_pattern),
         shape=shape,
@@ -34,19 +36,23 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         percent_burn_free=percent_burn_free,
         burn_class=2,
     )
+    print('done building train dataset')
 
     model_path = os.path.join(bucket, model_pattern)
 
     channels = len(image_bands)
     classes = 3 # none, not-burn, burn
 
+    print('building model')
     model = Model.build_unet_model(
         input_shape=(*shape, channels), classes=classes
     )
+    print('done builing model')
 
     if load_model:
         print(f'loading model from {model_path}')
         model.load_weights(model_path).expect_partial()
+        print('done loading model')
     else:
         print('not loading model')
 
