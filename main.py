@@ -84,10 +84,10 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             predictions = model.predict(dataset, steps=patches, verbose=1)
 
             filename = m.replace('-mixer.json', '-results.tfrecord')
-            filename = filename.replace(test_folder, '')
+            filename = filename.replace(test_folder, predictions_folder)
             if filename[0] == '/': # remove erroneous /
                 filename = filename[1:]
-            output_file = os.path.join(bucket, predictions_folder, filename)
+            output_file = os.path.join(bucket, filename)
 
             print(f'Writing results for {m} to {output_file}')
 
