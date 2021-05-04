@@ -6,7 +6,8 @@ import data as Data
 import model as Model
 
 def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
-         modelA='rylansPicksModel', modelB=None, shape=(160, 160), batch_size=32,
+         modelA='rylansPicksModel', modelB=None, store_model=True,
+         shape=(160, 160), batch_size=32,
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=False,
          min_burn_percent=None, percent_burn_free=None, predict=False,
@@ -67,7 +68,9 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             filepath=store_model_path, save_weights_only=True,
             save_freq=steps_per_epoch
         )
-        callbacks = [checkpoint]
+        callbacks = None
+        if store_model:
+            callbacks = [checkpoint]
 
         optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
