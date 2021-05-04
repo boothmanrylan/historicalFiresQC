@@ -65,7 +65,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         )
 
     if predict:
-        mixer_files = tf.io.gfile.glob(os.path.join(test_folder, '*mixer.json'))
+        mixer_files = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*mixer.json'))
 
         for m in mixer_files:
             with tf.io.gfile.GFile(m, 'r') as f:
@@ -87,7 +87,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             filename = filename.replace(test_folder, '')
             if filename[0] == '/': # remove erroneous /
                 filename = filename[1:]
-            output_file = os.path.join(predictions_folder, filename)
+            output_file = os.path.join(bucket, predictions_folder, filename)
 
             print(f'Writing results for {m} to {output_file}')
 
