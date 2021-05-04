@@ -89,10 +89,13 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             tfrecords = tf.io.gfile.glob(pattern)
             tfrecords.sort()
 
+            print(f'building dataset for {pattern}')
             dataset = Data.get_dataset(
-                tfrecords, shape, image_bands, annotation_bands,
-                batch_size=1, filters=False, shuffle=False, train=False
+                patterns=tfrecords, shape=shape, image_bands=image_bands,
+                annotation_bands=['lsliceClass'], batch_size=1, filters=False,
+                shuffle=False, train=False
             )
+            print('done building dataset')
 
             predictions = model.predict(dataset, steps=patches, verbose=1)
 

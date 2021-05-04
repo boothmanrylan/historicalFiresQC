@@ -114,7 +114,7 @@ def bai(bands):
 
 @tf.function
 def parse_old(example, shape, image_bands, annotation_bands):
-    used_bands = image_bands + ['lsliceClass']
+    used_bands = image_bands + annotation_bands
     if 'bai' in used_bands:
         calc_bai = True
         used_bands.remove('bai')
@@ -133,7 +133,9 @@ def parse_old(example, shape, image_bands, annotation_bands):
     image = tf.stack(
         [tf.reshape(parsed[x], shape) for x in image_bands], -1
     )
-    annotation = tf.cast(tf.reshape(parsed['lsliceClass'], shape), tf.int64)
+    annotation = tf.cast(tf.stack(
+        [tf.reshape(parsed[x], shape) for x in annotation_bands], -1
+    ), tf.int64)
 
     return tf.squeeze(image), tf.squeeze(annotation)
 
@@ -282,10 +284,13 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         parse_fn = parse_old # must calculate BAI
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
+
+    print('parsing dataset')
     dataset = dataset.map(
         lambda x: parse_fn(x, shape, image_bands, annotation_bands),
         num_parallel_calls=AUTOTUNE
     )
+    print('done parsing dataset')
 
     if percent_burn_free is not None:
         burn_free_dataset = dataset.filter(filter_blank).filter(filter_nan)
