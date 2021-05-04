@@ -36,13 +36,19 @@ def build_unet_model(input_shape, classes):
         pix2pix.upsample(64,  3)
     ]
 
+    print('creating input layer')
     inputs = tf.keras.layers.Input(shape=input_shape)
     x = inputs
+    print('done creating input layer')
 
+    print('creating skips')
     skips = down_stack(x)
     x = skips[-1]
+    print('done creating skips')
 
+    print('reversing skips')
     skips = reversed(skips[:-1])
+    print('done reversing skips')
 
     print('connecting layers')
     for up, skip in zip(up_stack, skips):
