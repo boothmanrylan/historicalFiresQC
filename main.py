@@ -33,12 +33,12 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     )
     print('done builing model')
 
-    # if load_model:
-    #     print(f'loading model from {model_path}')
-    #     model.load_weights(model_path)
-    #     print('done loading model')
-    # else:
-    #     print('not loading model')
+    if load_model:
+        print(f'loading model from {model_path}')
+        # model.load_weights(model_path)
+        print('done loading model')
+    else:
+        print('not loading model')
 
     # if train_model:
     #     print('building train dataset')
