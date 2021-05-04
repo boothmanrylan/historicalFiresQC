@@ -38,11 +38,10 @@ def build_unet_model(input_shape, classes):
 
     print('creating input layer')
     inputs = tf.keras.layers.Input(shape=input_shape)
-    x = inputs
     print('done creating input layer')
 
     print('creating skips')
-    skips = down_stack(x)
+    skips = down_stack(inputs)
     x = skips[-1]
     print('done creating skips')
 
