@@ -35,7 +35,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
 
     if load_model:
         print(f'loading model from {model_path}')
-        model.load_weights(model_path).expect_partial()
+        model.load_weights(model_path)
         print('done loading model')
     else:
         print('not loading model')
