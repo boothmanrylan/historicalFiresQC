@@ -87,11 +87,10 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             filename = filename.replace(test_folder, predictions_folder)
             if filename[0] == '/': # remove erroneous /
                 filename = filename[1:]
-            output_file = os.path.join(bucket, filename)
 
-            print(f'Writing results for {m} to {output_file}')
+            print(f'Writing results for {m} to {filename}')
 
-            with tf.io.TFRecordWriter(output_file) as writer:
+            with tf.io.TFRecordWriter(filename) as writer:
                 patch = 1
                 for pred in predictions:
                     k = int(128 / 2)
