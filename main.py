@@ -6,7 +6,7 @@ import data as Data
 import model as Model
 
 def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
-         model_pattern='rylansPicksModel', shape=(160, 160), batch_size=32,
+         modelA='rylansPicksModel', modelB=None, shape=(160, 160), batch_size=32,
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=False,
          min_burn_percent=None, percent_burn_free=None, predict=False,
@@ -20,7 +20,11 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     if min_burn_percent == 0:
         train_filter = False
 
-    model_path = os.path.join(bucket, model_pattern)
+    if modelB is None:
+        modelB = modelA
+
+    load_model_path = os.path.join(bucket, modelA)
+    store_model_path = os.path.join(bucket, modelB)
 
     channels = len(image_bands)
     classes = 3 # none, not-burn, burn
@@ -32,8 +36,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     print('done builing model')
 
     if load_model:
-        print(f'loading model from {model_path}')
-        model.load_weights(model_path)
+        print(f'loading model from {load_model_path}')
+        model.load_weights(load_model_path)
         print('done loading model')
     else:
         print('not loading model')
@@ -41,7 +45,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     if train_model:
         print('building train dataset')
         if dataset_options is None:
-            datset_options = {}
+            dataset_options = {}
 
         dataset = Data.get_dataset(
             **dataset_options,
@@ -58,9 +62,9 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         )
         print('done building train dataset')
         print('training model')
-        print(f'storing checkpoints at {model_path}')
+        print(f'storing checkpoints at {store_model_path}')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
-            filepath=model_path, save_weights_only=True,
+            filepath=store_model_path, save_weights_only=True,
             save_freq=steps_per_epoch
         )
         callbacks = [checkpoint]
@@ -136,7 +140,8 @@ if __name__ == '__main__':
     params = {
         'bucket': '/home/rylan/school/historicalFiresQC/',
         'data_pattern': 'data',
-        'model_pattern': 'models',
+        'modelA': 'model1',
+        'modelB': 'model2',
         'shape': (128, 128),
         'batch_size': 8,
         'epochs': 2,
