@@ -109,7 +109,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             with tf.io.TFRecordWriter(filename) as writer:
                 patch = 1
                 for pred in predictions:
-                    k = int(128 / 2)
+                    k = int(32 / 2)
                     pred = pred[k:-k, k:-k]
                     value = np.argmax(pred, -1).flatten()
                     feature = tf.train.Feature(
