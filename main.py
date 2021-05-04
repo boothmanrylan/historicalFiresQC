@@ -54,6 +54,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             repeat=True,
             percent_burn_free=percent_burn_free,
             burn_class=2,
+            train=True
         )
         print('done building train dataset')
         print('training model')
@@ -93,7 +94,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             dataset = Data.get_dataset(
                 patterns=tfrecords, shape=shape, image_bands=image_bands,
                 annotation_bands=['lsliceClass'], batch_size=1, filters=False,
-                shuffle=False, train=False
+                shuffle=False, train=False, burn_class=2
             )
             print('done building dataset')
 
