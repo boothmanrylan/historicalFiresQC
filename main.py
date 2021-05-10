@@ -63,14 +63,16 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         )
         print('done building train dataset')
         print('training model')
-        print(f'storing checkpoints at {store_model_path}')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             filepath=store_model_path, save_weights_only=True,
-            save_freq=steps_per_epoch
+            save_freq=steps_per_epoch * int(epochs / 4)
         )
         callbacks = None
         if store_model:
+            print(f'storing checkpoints at {store_model_path}')
             callbacks = [checkpoint]
+        else:
+            print('not saving model weights')
 
         optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
