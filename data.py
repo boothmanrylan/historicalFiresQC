@@ -144,8 +144,10 @@ def parse_old(example, shape, image_bands, annotation_bands):
 
 @tf.function
 def parse(example, shape, image_bands, annotation_bands):
-
-    used_bands = image_bands + annotation_bands
+    if annotation_bands is not None:
+        used_bands = image_bands + annotation_bands
+    else:
+        used_bands = image_bands
 
     feature_description = {
         k: tf.io.FixedLenFeature(shape, tf.float32) for k in used_bands
@@ -156,11 +158,15 @@ def parse(example, shape, image_bands, annotation_bands):
     image = tf.stack(
         [tf.reshape(parsed[x], shape) for x in image_bands], -1
     )
-    annotation = tf.cast(tf.stack(
-        [tf.reshape(parsed[x], shape) for x in annotation_bands], -1
-    ), tf.int64)
+    if annotation_bands is not None:
+        annotation = tf.cast(tf.stack(
+            [tf.reshape(parsed[x], shape) for x in annotation_bands], -1
+        ), tf.int64)
+        annotation = tf.squeeze(annotation)
+    else:
+        annotation = None
 
-    return tf.squeeze(image), tf.squeeze(annotation)
+    return tf.squeeze(image), annotation
 
 # used by augment data to randomly flip, rotate and zoom training data
 augmenter = tf.keras.Sequential([
@@ -280,16 +286,11 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         except AssertionError as E:
             raise ValueError(f'invalid annotation band name: {b}') from E
 
-    if train:
-        parse_fn = parse
-    else:
-        parse_fn = parse_old # must calculate BAI
-
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
 
     print('parsing dataset')
     dataset = dataset.map(
-        lambda x: parse_fn(x, shape, image_bands, annotation_bands),
+        lambda x: parse(x, shape, image_bands, annotation_bands),
         num_parallel_calls=AUTOTUNE
     )
     print('done parsing dataset')

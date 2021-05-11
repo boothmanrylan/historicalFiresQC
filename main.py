@@ -102,7 +102,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             print(f'building dataset for {pattern}')
             dataset = Data.get_dataset(
                 patterns=tfrecords, shape=shape, image_bands=image_bands,
-                annotation_bands=['lsliceClass'], batch_size=1, filters=False,
+                annotation_bands=None, batch_size=1, filters=False,
                 shuffle=False, train=False, burn_class=2
             )
             print('done building dataset')
