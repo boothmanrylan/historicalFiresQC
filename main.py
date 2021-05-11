@@ -88,16 +88,14 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
 
     if predict:
         print(f'storing predictions for {test_folder} to {predictions_folder}')
-        mixer_files = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*mixer.json'))
-        print(os.path.join(bucket, test_folder, '*.mixer.json'))
-        print(mixer_files)
+        mixer_files = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*.json'))
 
         for m in mixer_files:
             with tf.io.gfile.GFile(m, 'r') as f:
                 mixer = json.loads(f.read())
             patches = mixer['totalPatches']
 
-            pattern = m.replace('mixer.json', '*.tfrecord.gz')
+            pattern = m.replace('.json', '.tfrecord.gz')
             tfrecords = tf.io.gfile.glob(pattern)
             tfrecords.sort()
 
@@ -111,7 +109,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
 
             predictions = model.predict(dataset, steps=patches, verbose=1)
 
-            filename = m.replace('-mixer.json', '-results.tfrecord')
+            filename = m.replace('.json', '-results.tfrecord')
             filename = filename.replace(test_folder, predictions_folder)
             if filename[0] == '/': # remove erroneous /
                 filename = filename[1:]
