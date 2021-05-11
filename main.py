@@ -89,6 +89,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     if predict:
         print(f'storing predictions for {test_folder} to {predictions_folder}')
         mixer_files = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*mixer.json'))
+        print(os.path.join(bucket, test_folder, '*.mixer.json'))
+        print(mixer_files)
 
         for m in mixer_files:
             with tf.io.gfile.GFile(m, 'r') as f:
