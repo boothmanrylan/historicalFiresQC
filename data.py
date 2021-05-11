@@ -275,16 +275,16 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         files = tf.data.Dataset.list_files(patterns, shuffle=shuffle)
 
     # ensure band names are all valid
-    for b in image_bands:
-        try:
-            assert b in all_bands
-        except AssertionError as E:
-            raise ValueError(f'invalid image band name: {b}') from E
-    for b in annotation_bands:
-        try:
-            assert b in all_bands
-        except AssertionError as E:
-            raise ValueError(f'invalid annotation band name: {b}') from E
+    # for b in image_bands:
+    #     try:
+    #         assert b in all_bands
+    #     except AssertionError as E:
+    #         raise ValueError(f'invalid image band name: {b}') from E
+    # for b in annotation_bands:
+    #     try:
+    #         assert b in all_bands
+    #     except AssertionError as E:
+    #         raise ValueError(f'invalid annotation band name: {b}') from E
 
     dataset = tf.data.TFRecordDataset(files, compression_type='GZIP')
 
