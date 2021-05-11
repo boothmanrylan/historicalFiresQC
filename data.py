@@ -263,7 +263,8 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     if not isinstance(image_bands, list):
         image_bands = [image_bands]
     if not isinstance(annotation_bands, list):
-        annotation_bands = [annotation_bands]
+        if annotation_bands is not None:
+            annotation_bands = [annotation_bands]
 
     if '*' in patterns[0]: # patterns need unix style file expansion
         files = tf.data.Dataset.list_files(patterns[0], shuffle=shuffle)
