@@ -65,7 +65,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         print('training model')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             filepath=store_model_path, save_weights_only=True,
-            save_freq=steps_per_epoch * int(epochs / 4)
+            save_freq=steps_per_epoch * int(epochs / 5)
         )
         callbacks = None
         if store_model:
