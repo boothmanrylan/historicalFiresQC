@@ -95,7 +95,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
                 mixer = json.loads(f.read())
             patches = mixer['totalPatches']
 
-            pattern = m.replace('.json', '.tfrecord.gz')
+            pattern = m.replace('.json', '*.tfrecord.gz')
+            pattern = pattern.replace('mixer', '')
             tfrecords = tf.io.gfile.glob(pattern)
             tfrecords.sort()
 
