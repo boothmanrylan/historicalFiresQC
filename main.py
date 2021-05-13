@@ -12,7 +12,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          train_model=False, load_model=False,
          min_burn_percent=None, percent_burn_free=None, predict=False,
          test_folder='historicalFiresQCMaskedData',
-         predictions_folder='rylansPicks', dataset_options=None):
+         predictions_folder='rylansPicks', dataset_options=None, overlap=32):
     print('Starting main')
     image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
     annotation_bands = ['class']
@@ -120,7 +120,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             with tf.io.TFRecordWriter(filename) as writer:
                 patch = 1
                 for pred in predictions:
-                    k = int(32 / 2)
+                    k = int(overlap / 2)
                     pred = pred[k:-k, k:-k]
                     value = np.argmax(pred, -1).flatten()
                     feature = tf.train.Feature(
