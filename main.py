@@ -14,7 +14,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          test_folder='historicalFiresQCMaskedData',
          predictions_folder='rylansPicks', dataset_options=None, overlap=32):
     print('Starting main')
-    image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
+    image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai',
+                   'stretched_nir1', 'strectched_nir2']
     annotation_bands = ['class']
 
     train_filter = lambda x, y: Data.filter_mostly_burnt(x, y, 2, min_burn_percent)
