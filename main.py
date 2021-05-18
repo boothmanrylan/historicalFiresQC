@@ -12,13 +12,9 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          train_model=False, load_model=False,
          min_burn_percent=None, percent_burn_free=None, predict=False,
          test_folder='historicalFiresQCMaskedData',
-         predictions_folder='rylansPicks', dataset_options=None, overlap=32,
-         include_stretched=False):
+         predictions_folder='rylansPicks', dataset_options=None, overlap=32):
     print('Starting main')
-    image_bands = ['B4', 'B5', 'B6', 'B7', 'TCA', 'bai']
-
-    if include_stretched:
-        image_bands.extend(['stretched_nir1', 'strectched_nir2'])
+    image_bands = ['B6', 'B7', 'TCA', 'bai']
 
     annotation_bands = ['class']
 
