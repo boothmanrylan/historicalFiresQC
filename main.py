@@ -12,9 +12,12 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          train_model=False, load_model=False,
          min_burn_percent=None, percent_burn_free=None, predict=False,
          test_folder='historicalFiresQCMaskedData',
-         predictions_folder='rylansPicks', dataset_options=None, overlap=32):
+         predictions_folder='rylansPicks', dataset_options=None, overlap=32,
+         image_bands=None):
     print('Starting main')
-    image_bands = ['B6', 'B7', 'TCA', 'bai']
+
+    if image_bands is None:
+        image_bands = ['B4', 'B4', 'B6', 'B7', 'TCA', 'bai']
 
     annotation_bands = ['class']
 
