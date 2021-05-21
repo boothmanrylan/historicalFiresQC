@@ -44,6 +44,9 @@ def false_colour_image(image):
 
     return fci
 
+def greyscale_image(image, band):
+    return image[:, :, band]
+
 def calculate_vmin_vmax(image, alpha=0.9):
     mean = np.mean(image)
     std = np.std(image)
@@ -59,14 +62,21 @@ def histogram_to_str(annotation, classes):
         output = None
     return output
 
-def visualize(dataset, model=None, num=20, stacked_image=False,
-              include_prev_burn_age=False, include_prev_class=False,
-              max_annot=None, max_burn_age=3650, normalized_data=False,
-              histogram=None):
+def visualize(dataset, model=None, num=20, greyscale_band=None):
     '''
     histogram should be None for no histogram or an int representing the numbe
     of classes in an anotation
     '''
+
+    # outdated arguments
+    stacked_image = False
+    include_prev_burn_age = False
+    include_prev_class = False
+    max_annot = 2
+    max_burn_age = 3650
+    histogram=None
+    normalized_data = True
+    # end of outdated arguments
 
     if normalized_data:
         cmap = normalized_class_cmap
@@ -74,6 +84,11 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
     else:
         cmap = class_cmap
         norm = class_norm
+
+    if greyscale_band is not None:
+        image_fn = lambda im: greyscale_image(im, greyscale_band)
+    else:
+        image_fn = false_colour_image
 
     if max_annot is not None:
         cmap = 'gray'
@@ -90,14 +105,14 @@ def visualize(dataset, model=None, num=20, stacked_image=False,
 
         _, ax = plt.subplots(1, num_figs, figsize=(15, 30))
 
-        fci = false_colour_image(image[:, :, :4])
+        fci = image_fn(image[:, :, :4])
         vmin, vmax = calculate_vmin_vmax(fci)
         ax[0].imshow(fci, vmin=vmin, vmax=vmax)
         ax[0].set_title('Input Patch')
         plot_offset = 1
         band_offset = 4
         if stacked_image:
-            fci = false_colour_image(image[:, :, band_offset:band_offset + 4])
+            fci = image_fn(image[:, :, band_offset:band_offset + 4])
             vmin, vmax = calculate_vmin_vmax(fci)
             ax[plot_offset].imshow(fci, vmin=vmin, vmax=vmax)
             ax[plot_offset].set_title('Previous Patch')

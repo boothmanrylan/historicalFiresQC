@@ -44,25 +44,26 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     else:
         print('not loading model')
 
-    if train_model:
-        print('building train dataset')
-        if dataset_options is None:
-            dataset_options = {}
+    print('building train dataset')
+    if dataset_options is None:
+        dataset_options = {}
 
-        dataset = Data.get_dataset(
-            **dataset_options,
-            patterns=os.path.join(bucket, data_pattern),
-            shape=shape,
-            image_bands=image_bands,
-            annotation_bands=annotation_bands,
-            batch_size=batch_size,
-            filters=train_filter,
-            repeat=True,
-            percent_burn_free=percent_burn_free,
-            burn_class=2,
-            train=True
-        )
-        print('done building train dataset')
+    train_dataset = Data.get_dataset(
+        **dataset_options,
+        patterns=os.path.join(bucket, data_pattern),
+        shape=shape,
+        image_bands=image_bands,
+        annotation_bands=annotation_bands,
+        batch_size=batch_size,
+        filters=train_filter,
+        repeat=True,
+        percent_burn_free=percent_burn_free,
+        burn_class=2,
+        train=True
+    )
+    print('done building train dataset')
+
+    if train_model:
         print('training model')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             filepath=store_model_path, save_weights_only=True,
@@ -81,7 +82,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         metrics = ['accuracy']
         model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
         model.fit(
-            dataset, epochs=epochs, verbose=1,
+            train_dataset, epochs=epochs, verbose=1,
             steps_per_epoch=steps_per_epoch, callbacks=callbacks
         )
     else:
@@ -141,6 +142,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
                     patch += 1
     else:
         print('not storing predictions')
+
+    return model, train_dataset
 
 
 if __name__ == '__main__':
