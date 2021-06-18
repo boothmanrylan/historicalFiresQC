@@ -147,10 +147,10 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
                     patch += 1
     elif predict and nested:
         print('storing nested predictions')
-        folders = tf.io.gfile.glob(os.path.join(bucket, test_folder))
+        folders = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*'))
 
         for folder in folders:
-            _, scene_id = folder.split()
+            _, scene_id = os.path.split(folder)
 
             mixer_file = os.path.join(folder, 'mixer.json')
             tfrecord = os.path.join(folder, '00000.tfrecord.gz')
