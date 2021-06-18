@@ -161,7 +161,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
             uploads.append({
                 'mixer': mixer_file,
                 'date': f'{date.year:04}-{date.month:02}-{date.day:02}',
-                'image': output_file
+                'image': output_file,
+                'name': scene_id
             })
 
             with tf.io.gfile.GFile(mixer_file, 'r') as f:
