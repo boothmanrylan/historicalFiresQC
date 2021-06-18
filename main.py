@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime
 import tensorflow as tf
 import numpy as np
 import data as Data
@@ -13,7 +14,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          min_burn_percent=None, percent_burn_free=None, predict=False,
          test_folder='historicalFiresQCMaskedData',
          predictions_folder='rylansPicks', dataset_options=None, overlap=32,
-         image_bands=None):
+         image_bands=None, nested=False):
     print('Starting main')
 
     if image_bands is None:
@@ -91,7 +92,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     else:
         print('not training model')
 
-    if predict:
+    uploads = []
+    if predict and not nested:
         print(f'storing predictions for {test_folder} to {predictions_folder}')
         mixer_files = tf.io.gfile.glob(os.path.join(bucket, test_folder, '*.json'))
 
@@ -143,10 +145,66 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
 
                     writer.write(example.SerializeToString())
                     patch += 1
+    elif predict and nested:
+        print('storing nested predictions')
+        folders = tf.io.gfile.glob(os.path.join(bucket, test_folder))
+
+        for folder in folders:
+            _, scene_id = folder.split()
+
+            mixer_file = os.path.join(folder, 'mixer.json')
+            tfrecord = os.path.join(folder, '00000.tfrecord.gz')
+            output_file = os.path.join(folder, scene_id + '-result.tfrecord')
+
+            date = datetime.strptime(scene_id[9:16], '%Y%j')
+
+            uploads.append({
+                'mixer': mixer_file,
+                'date': f'{date.year:04}-{date.month:02}-{date.day:02}',
+                'image': output_file
+            })
+
+            with tf.io.gfile.GFile(mixer_file, 'r') as f:
+                mixer = json.loads(f.read())
+            patches = mixer['totalPatches']
+
+            print(f'building dataset for {tfrecord}')
+            dataset = Data.get_dataset(
+                patterns=tfrecord, shape=shape, image_bands=image_bands,
+                annotation_bands=None, batch_size=1, filters=False,
+                shuffle=False, train=False, burn_class=2
+            )
+            print('done building dataset')
+
+            predictions = model.predict(dataset, steps=patches, verbose=1)
+
+            print(f'Writing results to {output_file}')
+
+            with tf.io.TFRecordWriter(output_file) as writer:
+                patch = 1
+                for pred in predictions:
+                    k = int(overlap / 2)
+                    pred = pred[k:-k, k:-k]
+                    value = np.argmax(pred, -1).flatten()
+                    feature = tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=value)
+                    )
+
+                    if patch % 100 == 0:
+                        print(f'Writing {patch} of {patches}')
+
+                    example = tf.train.Example(
+                        features=tf.train.Features(
+                            feature={'class': feature}
+                        )
+                    )
+
+                    writer.write(example.SerializeToString())
+                    patch += 1
     else:
         print('not storing predictions')
 
-    return model, train_dataset
+    return model, train_dataset, uploads
 
 
 if __name__ == '__main__':
