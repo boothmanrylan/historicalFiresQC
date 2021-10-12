@@ -3,7 +3,7 @@ import json
 import os
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.callback import Callback
+from tensorflow.keras.callbacks import Callback
 import numpy as np
 import data as Data
 import model as Model
