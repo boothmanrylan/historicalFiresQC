@@ -3,6 +3,7 @@ import numpy as np
 from tensorflow_examples.models.pix2pix import pix2pix
 from tensorflow.keras import backend as K
 
+
 def build_unet_model(input_shape, classes):
     """
     Constructs a basic UNET model.
@@ -118,6 +119,7 @@ def reference_point_loss(loss_fn, weights=None, alpha=1.0, beta=1.0, **args):
         return (alpha * base_loss) + (beta * ref_loss)
     return _ref_point_loss
 
+
 def basic_loss(loss_fn, **args):
     '''
     Here to make the basic loss more compatible with the other loss functions
@@ -125,6 +127,7 @@ def basic_loss(loss_fn, **args):
     def _basic_loss(true, pred):
         return loss_fn(true, pred, **args)
     return _basic_loss
+
 
 def no_burn_edge_loss(loss_fn, **args):
     '''
@@ -141,6 +144,7 @@ def no_burn_edge_loss(loss_fn, **args):
         base_loss = loss_fn(labels, pred, **args)
         return base_loss * tf.cast(burn_edge_mask, base_loss.dtype)
     return _no_burn_edge_loss
+
 
 class MeanIoUFromLogits(tf.keras.metrics.Metric):
     def __init__(self, num_classes, name=None, dtype=None):
