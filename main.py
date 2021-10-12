@@ -1,9 +1,21 @@
+import gc
 import json
 import os
 import tensorflow as tf
+from tensorflow.keras import backend as K
+from tensorflow.keras.callback import Callback
 import numpy as np
 import data as Data
 import model as Model
+
+
+class ClearMemory(Callback):
+    """
+    From: github.com/tensorflow/tensorflow/issues/31312#issuecomment-821809246
+    """
+    def on_epoch_end(self, epoch, logs=None):
+        gc.collect()
+        K.clear_session()
 
 
 def train(model, model_path, steps_per_epoch, epochs, store_model,
@@ -20,7 +32,8 @@ def train(model, model_path, steps_per_epoch, epochs, store_model,
 
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     metrics = ['accuracy']
-    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=metrics,
+                  run_eagerly=True)
     model.fit(
         train_dataset, epochs=epochs, verbose=1,
         steps_per_epoch=steps_per_epoch, callbacks=callbacks
