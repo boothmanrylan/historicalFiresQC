@@ -136,7 +136,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
                                  annotation that eqaul the first value with the
                                  second value.
     cache (bool):                if true cache the dataset
-    shuffle (bool):              if true shuffle dataset with buffer size 1000.
+    shuffle (bool):              if true shuffle dataset with buffer size 500.
     repeat (bool):               if true dataset repeates infinitely.
     prefetch (bool):             if true the dataset is prefetched with
                                  AUTOTUNE buffer.
@@ -170,7 +170,7 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         dataset = dataset.cache()
 
     if shuffle:
-        dataset = dataset.shuffle(1000)
+        dataset = dataset.shuffle(500)
 
     dataset = dataset.batch(batch_size)
 
