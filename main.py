@@ -95,14 +95,12 @@ def predict(bucket, model, test_folder, predictions_folder, shape, image_bands,
 
 def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          model_path='rylansPicksModel', store_model=True,
-         shape=(160, 160), batch_size=32,
+         shape=(160, 160), desired_shape=None, batch_size=32,
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
-         train_model=False, load_model=False,
-         make_predictions=False, cache=False, shuffle=False, repeat=False,
-         prefetch=False, augment=False,
+         train_model=False, load_model=False, make_predictions=False,
+         shuffle=False, repeat=False, augment=False,
          test_folder='historicalFiresQCMaskedData',
-         predictions_folder='rylansPicks', overlap=32,
-         image_bands=None):
+         predictions_folder='rylansPicks', overlap=32, image_bands=None):
 
     if image_bands is None:
         image_bands = Data.ALL_BANDS
@@ -125,11 +123,18 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     if load_model:
         model.load_weights(model_path)
 
+    if desired_shape is not None:
+        try:
+            assert desired_shape[0] <= shape[0]
+            assert desired_shape[1] <= shape[1]
+        except AssertionError as E:
+            raise ValueError("if given, desired_shape must be <= shape") from E
+
     train_dataset = Data.get_dataset(
         patterns=os.path.join(bucket, data_pattern), shape=shape,
         image_bands=image_bands, annotation_bands=annotation_bands,
-        batch_size=batch_size, cache=cache, shuffle=shuffle, repeat=True,
-        prefetch=prefetch, augment=augment
+        batch_size=batch_size, shuffle=shuffle, repeat=repeat,
+        augment=augment, desired_shape=desired_shape
     )
 
     if train_model:
