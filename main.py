@@ -116,19 +116,22 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     channels = len(image_bands)
     classes = 3  # none, not-burn, burn
 
-    model = Model.build_unet_model(
-        input_shape=(*shape, channels), classes=classes
-    )
-
-    if load_model:
-        model.load_weights(model_path)
-
     if desired_shape is not None:
         try:
             assert desired_shape[0] <= shape[0]
             assert desired_shape[1] <= shape[1]
         except AssertionError as E:
             raise ValueError("if given, desired_shape must be <= shape") from E
+        model_shape = desired_shape
+    else:
+        model_shape = shape
+
+    model = Model.build_unet_model(
+        input_shape=(*model_shape, channels), classes=classes
+    )
+
+    if load_model:
+        model.load_weights(model_path)
 
     train_dataset = Data.get_dataset(
         patterns=os.path.join(bucket, data_pattern), shape=shape,
