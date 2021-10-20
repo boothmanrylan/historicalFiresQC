@@ -90,8 +90,8 @@ def _augment_data(x, y, seed):
     # explicit reshape to avoid
     # ValueError: as_list() is not defined on an unknown TensorShape.
     # which is thrown by model.fit
-    new_x = tf.reshape(x, x_shape)
-    new_y = tf.reshape(y, y_shape)
+    new_x = tf.reshape(new_x, x_shape)
+    new_y = tf.reshape(new_y, y_shape)
     return new_x, new_y
 
 
