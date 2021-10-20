@@ -108,6 +108,51 @@ def augment_data(x, y):
     return _augment_data(x, y, seed)
 
 
+@tf.function
+def _crop_data(x, y, height, width, seed):
+    """
+    Randomly crops x and y to have shape (height, width, bands).
+    Ensures that both x and y are cropped in the same place.
+    """
+    # add dummy channel dimension to y if it has none
+    y_shape = tf.shape(y)
+    if len(y_shape) == 3:
+        y = tf.reshape(y, tf.concat([y_shape, [1]], -1))
+        n_y_bands = 1
+    else:
+        n_y_bands = y_shape[-1]
+
+    n_x_bands = tf.shape(x)[-1]
+
+    # cast y to same type as x before concat, undone before returning
+    y_type = y.dtype
+    y = tf.cast(y, x.dtype)
+
+    xy = tf.concat([x, y], -1)
+
+    cropped_xy = tf.image.stateless_random_crop(
+        value=xy, size=(height, width, n_x_bands + n_y_bands), seed=seed
+    )
+
+    cropped_x = cropped_xy[:, :, :, :-n_y_bands]
+    cropped_y = tf.cast(cropped_xy[:, :, :, -n_y_bands:], y_type)
+
+    # explicit reshape to avoid
+    # ValueError: as_list() is not defined on an unknown TensorShape.
+    # which is thrown by model.fit
+    new_x = tf.reshape(cropped_x, (height, width, n_x_bands))
+    new_y = tf.squeeze(tf.reshape(cropped_y, (height, width, n_y_bands)))
+    return new_x, new_y
+
+
+def crop_data(x, y, height, width):
+    """
+    Creates a random seed then calls _crop_data
+    """
+    seed = RNG.make_seeds(2)[0]
+    return _crop_data(x, y, height, width, seed)
+
+
 def get_files_as_dataset(patterns, shuffle):
     if not isinstance(patterns, list):
         patterns = [patterns]
@@ -125,23 +170,27 @@ def get_files_as_dataset(patterns, shuffle):
 
 
 def get_dataset(patterns, shape, image_bands, annotation_bands,
-                batch_size=64, cache=False, shuffle=False, repeat=False,
-                prefetch=False, augment=False):
+                batch_size=64, shuffle=False, repeat=False, augment=False,
+                desired_shape=None):
     """
     patterns (str/str list):     Files to create dataset from. Can either be
                                  complete filepaths or unix style patterns.
     shape (int tuple):           Shape of each patch without band dimension.
+                                 This is the shape of the patches as stored in
+                                 the TFRecord, this can be shrunk by setting
+                                 desired shape.
     image_bands (str list):      Name of each band to use in model input.
     annotation_bands (str list): Name of each band to use in ground truth.
-                                 annotation that eqaul the first value with the
-                                 second value.
-    cache (bool):                if true cache the dataset
     shuffle (bool):              if true shuffle dataset with buffer size 500.
     repeat (bool):               if true dataset repeates infinitely.
     prefetch (bool):             if true the dataset is prefetched with
                                  AUTOTUNE buffer.
     augment (bool):              If true the data is augmented with random
                                  flips etc...
+    desired_shape (int tuple):   Desired shape of the final output, if given
+                                 and different than shape each patch will be
+                                 randomly cropped to match this shape. Should
+                                 just be (height, width) i.e. no band dimension
 
     Returns a tf.data.TFRecordDataset
     """
@@ -166,21 +215,23 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
         num_parallel_calls=AUTOTUNE
     )
 
-    if cache:
-        dataset = dataset.cache()
+    dataset = dataset.cache()
 
     if shuffle:
-        dataset = dataset.shuffle(500)
+        dataset = dataset.shuffle(1000)
 
     dataset = dataset.batch(batch_size)
 
     if augment:
         dataset = dataset.map(augment_data)
 
+    if desired_shape is not None:
+        if desired_shape[0] < shape[0] or desired_shape[1] < shape[1]:
+            dataset = dataset.map(lambda x, y: crop_data(x, y, *desired_shape))
+
     if repeat:
         dataset = dataset.repeat()
 
-    if prefetch:
-        dataset = dataset.prefetch(buffer_size=AUTOTUNE)
+    dataset = dataset.prefetch(buffer_size=AUTOTUNE)
 
     return dataset
