@@ -58,7 +58,7 @@ def _augment_data(x, y, seed):
     x_shape = tf.shape(x)
     y_shape = tf.shape(y)
 
-    if len(y_shape) == 3:  # add dummy channel dimension
+    if len(y_shape) == 2:  # add dummy channel dimension
         y = tf.reshape(y, tf.concat([y_shape, [1]], -1))
         n_y_bands = 1
     else:
@@ -73,8 +73,8 @@ def _augment_data(x, y, seed):
     xy = AUGMENTER(tf.concat([x, y], -1), training=True)
 
     # split the combined x and y
-    new_x = xy[:, :, :, :-n_y_bands]
-    new_y = tf.cast(tf.squeeze(xy[:, :, :, -n_y_bands:]), y_type)
+    new_x = xy[:, :, :-n_y_bands]
+    new_y = tf.cast(tf.squeeze(xy[:, :, -n_y_bands:]), y_type)
 
     new_seed = tf.random.experimental.stateless_split(seed, num=1)[0, :]
 
@@ -116,7 +116,7 @@ def _crop_data(x, y, height, width, seed):
     """
     # add dummy channel dimension to y if it has none
     y_shape = tf.shape(y)
-    if len(y_shape) == 3:
+    if len(y_shape) == 2:
         y = tf.reshape(y, tf.concat([y_shape, [1]], -1))
         n_y_bands = 1
     else:
@@ -134,8 +134,8 @@ def _crop_data(x, y, height, width, seed):
         value=xy, size=(height, width, n_x_bands + n_y_bands), seed=seed
     )
 
-    cropped_x = cropped_xy[:, :, :, :-n_y_bands]
-    cropped_y = tf.cast(cropped_xy[:, :, :, -n_y_bands:], y_type)
+    cropped_x = cropped_xy[:, :, :-n_y_bands]
+    cropped_y = tf.cast(cropped_xy[:, :, -n_y_bands:], y_type)
 
     # explicit reshape to avoid
     # ValueError: as_list() is not defined on an unknown TensorShape.
@@ -220,14 +220,17 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     if shuffle:
         dataset = dataset.shuffle(1000)
 
-    dataset = dataset.batch(batch_size)
-
-    if augment:
-        dataset = dataset.map(augment_data)
-
     if desired_shape is not None:
         if desired_shape[0] < shape[0] or desired_shape[1] < shape[1]:
-            dataset = dataset.map(lambda x, y: crop_data(x, y, *desired_shape))
+            dataset = dataset.map(
+                lambda x, y: crop_data(x, y, *desired_shape),
+                num_parallel_calls=AUTOTUNE
+            )
+
+    if augment:
+        dataset = dataset.map(augment_data, num_parallel_calls=AUTOTUNE)
+
+    dataset = dataset.batch(batch_size)
 
     if repeat:
         dataset = dataset.repeat()
