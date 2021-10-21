@@ -98,7 +98,7 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          shape=(160, 160), desired_shape=None, batch_size=32,
          learning_rate=1e-4, epochs=100, steps_per_epoch=100,
          train_model=False, load_model=False, make_predictions=False,
-         shuffle=False, repeat=False, augment=False,
+         shuffle=False, repeat=False, augment=False, adjust_brightness=False,
          test_folder='historicalFiresQCMaskedData',
          predictions_folder='rylansPicks', overlap=32, image_bands=None):
 
@@ -137,7 +137,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
         patterns=os.path.join(bucket, data_pattern), shape=shape,
         image_bands=image_bands, annotation_bands=annotation_bands,
         batch_size=batch_size, shuffle=shuffle, repeat=repeat,
-        augment=augment, desired_shape=desired_shape
+        augment=augment, adjust_brightness=adjust_brightness,
+        desired_shape=desired_shape
     )
 
     if train_model:

@@ -50,7 +50,6 @@ def _augment_data(x, y, seed):
     _augment_data to have a new seed.
 
     Randomly flips, rotates, and zooms x and y in identical fashion
-    Randomly adjusts the brightness and contrast of x
 
     Returns x, y after applying the augmentations.
     """
@@ -76,17 +75,6 @@ def _augment_data(x, y, seed):
     new_x = xy[:, :, :-n_y_bands]
     new_y = tf.cast(tf.squeeze(xy[:, :, -n_y_bands:]), y_type)
 
-    new_seed = tf.random.experimental.stateless_split(seed, num=1)[0, :]
-
-    # randomly adjust the brightness and contrast of x
-    new_x = tf.image.stateless_random_contrast(new_x, 0.1, 0.5, seed=new_seed)
-    new_x = tf.image.stateless_random_brightness(new_x, 0.5, seed=new_seed)
-
-    # add random gaussian noise to x
-    add_noise = tf.cast(RNG.normal(tf.shape(new_x)), new_x.dtype)
-    # scale before adding because x values always in range 0, 1
-    new_x += (add_noise / tf.cast(100.0, new_x.dtype))
-
     # explicit reshape to avoid
     # ValueError: as_list() is not defined on an unknown TensorShape.
     # which is thrown by model.fit
@@ -95,7 +83,26 @@ def _augment_data(x, y, seed):
     return new_x, new_y
 
 
-def augment_data(x, y):
+@tf.function
+def _augment_data2(x, seed):
+    """
+    Helper function for augment data. Necessary because we want each call to
+    _augment_data2 to have a new seed.
+
+    Randomly adjusts the brightness and contrast of x, adds random noise to x.
+    """
+    new_x = tf.image.stateless_random_contrast(x, 0.1, 0.5, seed=seed)
+    new_x = tf.image.stateless_random_brightness(new_x, 0.5, seed=seed)
+
+    # add random gaussian noise to x
+    add_noise = tf.cast(RNG.normal(tf.shape(new_x)), new_x.dtype)
+    # scale before adding because x values always in range 0, 1
+    new_x += (add_noise / tf.cast(100.0, new_x.dtype))
+
+    return new_x
+
+
+def augment_data(x, y, adjust_brightness_etc=False):
     """
     Creates random seed then calls _augment_data to perform data augmentation
 
@@ -104,8 +111,14 @@ def augment_data(x, y):
 
     returns x, y after applying augmentation
     """
-    seed = RNG.make_seeds(2)[0]
-    return _augment_data(x, y, seed)
+    seed1 = RNG.make_seeds(2)[0]
+    new_x, new_y = _augment_data(x, y, seed1)
+
+    if adjust_brightness_etc:
+        seed2 = RNG.make_seeds(2)[0]
+        new_x = _augment_data2(new_x, seed2)
+
+    return new_x, new_y
 
 
 @tf.function
@@ -171,7 +184,7 @@ def get_files_as_dataset(patterns, shuffle):
 
 def get_dataset(patterns, shape, image_bands, annotation_bands,
                 batch_size=64, shuffle=False, repeat=False, augment=False,
-                desired_shape=None):
+                adjust_brightness=False, desired_shape=None):
     """
     patterns (str/str list):     Files to create dataset from. Can either be
                                  complete filepaths or unix style patterns.
@@ -186,7 +199,10 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
     prefetch (bool):             if true the dataset is prefetched with
                                  AUTOTUNE buffer.
     augment (bool):              If true the data is augmented with random
-                                 flips etc...
+                                 flips/rotations etc...
+    adjust_brightness (bool):    If true and augment is also true, the input
+                                 image is augmented by adjusting brightness and
+                                 contrast and by adding gaussian noise.
     desired_shape (int tuple):   Desired shape of the final output, if given
                                  and different than shape each patch will be
                                  randomly cropped to match this shape. Should
@@ -228,7 +244,10 @@ def get_dataset(patterns, shape, image_bands, annotation_bands,
             )
 
     if augment:
-        dataset = dataset.map(augment_data, num_parallel_calls=AUTOTUNE)
+        dataset = dataset.map(
+            lambda x, y: augment_data(x, y, adjust_brightness),
+            num_parallel_calls=AUTOTUNE
+        )
 
     dataset = dataset.batch(batch_size)
 
