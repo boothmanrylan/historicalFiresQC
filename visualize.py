@@ -9,7 +9,7 @@ COLOURS = [
     (0.5, 0.5, 0.5),  # grey for no data
     (0.3, 0.15, 0),   # brown for land (non-burnt)
     (1, 0, 0),        # red for burns
-    (0, 0, 1),        # blue for water
+    (0, 0.5, 1),      # blue for water
     (0, 0, 0),        # black for shadow
     (1, 1, 1),        # white for clouds
 ]
