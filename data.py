@@ -3,7 +3,8 @@ from tensorflow.keras.layers.experimental import preprocessing
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 RNG = tf.random.Generator.from_seed(123, alg='philox')
-ALL_BANDS = ['nir', 'red_edge', 'red', 'green', 'bai', 'tca', 'class']
+ALL_BANDS = ['nir', 'red_edge', 'red', 'green', 'bai', 'tca', 'class',
+             'ndvi', 'cloud_index']
 AUGMENTER = tf.keras.Sequential([
     preprocessing.RandomFlip("horizontal_and_vertical"),
     preprocessing.RandomRotation(0.3),
