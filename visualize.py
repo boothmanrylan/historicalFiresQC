@@ -6,11 +6,14 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 MAX_ANNOT = 2
 
 COLOURS = [
-    (0, 0, 0),  # black for no data
-    (1, 1, 1),  # white for land (non-burnt)
-    (1, 0, 0),  # red for burnS
+    (0.5, 0.5, 0.5),  # grey for no data
+    (0.5, 0.25, 0),   # brown for land (non-burnt)
+    (1, 0, 0),        # red for burns
+    (0, 1, 0),        # blue for water
+    (0, 0, 0),        # black for shadow
+    (1, 1, 1),        # white for clouds
 ]
-BOUNDS = [0, 1, 2, 3]
+BOUNDS = [0, 1, 2, 3, 4, 5, 6]
 
 CLASS_CMAP = ListedColormap(COLOURS)
 CLASS_NORM = BoundaryNorm(BOUNDS, CLASS_CMAP.N)
