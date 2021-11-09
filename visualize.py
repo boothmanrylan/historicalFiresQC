@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
-MAX_ANNOT = 2
+MAX_ANNOT = 5
 
 COLOURS = [
     (0.5, 0.5, 0.5),  # grey for no data
