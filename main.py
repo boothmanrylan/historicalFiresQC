@@ -100,7 +100,8 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
          train_model=False, load_model=False, make_predictions=False,
          shuffle=False, repeat=False, augment=False, adjust_brightness=False,
          test_folder='historicalFiresQCMaskedData',
-         predictions_folder='rylansPicks', overlap=32, image_bands=None):
+         predictions_folder='rylansPicks', overlap=32, image_bands=None,
+         classes=3):
 
     if image_bands is None:
         image_bands = Data.ALL_BANDS
@@ -114,7 +115,6 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     model_path = os.path.join(bucket, model_path)
 
     channels = len(image_bands)
-    classes = 3  # none, not-burn, burn
 
     if desired_shape is not None:
         try:
