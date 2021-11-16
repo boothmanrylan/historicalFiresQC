@@ -10,11 +10,9 @@ def build_unet_model(input_shape, classes):
     Based on tensorflow.org/tutorials/images/segmentation
     """
 
-    print('creating base model')
     base_model = tf.keras.applications.MobileNetV2(
         input_shape=input_shape, include_top=False, weights=None
     )
-    print('done creating base model')
 
     layer_names = [
         'block_1_expand_relu',
@@ -24,11 +22,9 @@ def build_unet_model(input_shape, classes):
         'block_16_project'
     ]
 
-    print('creating down stack')
     layers = [base_model.get_layer(name).output for name in layer_names]
 
     down_stack = tf.keras.Model(inputs=base_model.input, outputs=layers)
-    print('done creating down stack')
 
     up_stack = [
         pix2pix.upsample(512, 3),
@@ -37,25 +33,17 @@ def build_unet_model(input_shape, classes):
         pix2pix.upsample(64,  3)
     ]
 
-    print('creating input layer')
     inputs = tf.keras.layers.Input(shape=input_shape)
-    print('done creating input layer')
 
-    print('creating skips')
     skips = down_stack(inputs)
     x = skips[-1]
-    print('done creating skips')
 
-    print('reversing skips')
     skips = reversed(skips[:-1])
-    print('done reversing skips')
 
-    print('connecting layers')
     for up, skip in zip(up_stack, skips):
         x = up(x)
         concat = tf.keras.layers.Concatenate()
         x = concat([x, skip])
-    print('done connecting layers')
 
     last = tf.keras.layers.Conv2DTranspose(
         classes, 3, strides=2, padding='same',
