@@ -133,13 +133,18 @@ def main(bucket='boothmanrylan', data_pattern='rylansPicks*.tfrecord.gz',
     if load_model:
         model.load_weights(model_path)
 
-    train_dataset = Data.get_dataset(
-        patterns=os.path.join(bucket, data_pattern), shape=shape,
-        image_bands=image_bands, annotation_bands=annotation_bands,
-        batch_size=batch_size, shuffle=shuffle, repeat=repeat,
-        augment=augment, adjust_brightness=adjust_brightness,
-        desired_shape=desired_shape
-    )
+    if isinstance(data_pattern, list):
+        data_pattern = [os.path.join(bucket, x) for x in data_pattern]
+    else:
+        data_pattern = os.path.join(bucket, data_pattern)
+
+    train_dataset = Data.get_dataset(patterns=data_pattern, shape=shape,
+                                     image_bands=image_bands,
+                                     annotation_bands=annotation_bands,
+                                     batch_size=batch_size, shuffle=shuffle,
+                                     repeat=repeat, augment=augment,
+                                     adjust_brightness=adjust_brightness,
+                                     desired_shape=desired_shape)
 
     if train_model:
         train(model, model_path, steps_per_epoch, epochs, store_model,
